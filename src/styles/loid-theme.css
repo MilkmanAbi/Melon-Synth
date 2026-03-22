@@ -1,0 +1,163 @@
+/* Loid Design System - CSS Custom Properties */
+
+:root {
+  /* Typography */
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  
+  /* Type Scale */
+  --text-xs: 0.6875rem;   /* 11px */
+  --text-sm: 0.75rem;     /* 12px */
+  --text-base: 0.875rem;  /* 14px */
+  --text-md: 1rem;        /* 16px */
+  --text-lg: 1.125rem;    /* 18px */
+  --mono-sm: 0.75rem;     /* 12px */
+  --mono-base: 0.875rem;  /* 14px */
+  
+  /* Font Weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+  
+  /* Animation Timing */
+  --duration-fast: 100ms;
+  --duration-default: 180ms;
+  --duration-slow: 280ms;
+  
+  /* Light Mode Colors */
+  --bg-base: #F8F7F4;
+  --bg-surface: #FFFFFF;
+  --bg-sunken: #F1F0ED;
+  --bg-overlay: #FFFFFF;
+  
+  --border-subtle: #E8E6E1;
+  --border-default: #D4D1CA;
+  --border-strong: #B8B4AC;
+  
+  --text-primary: #1C1B19;
+  --text-secondary: #6B6760;
+  --text-tertiary: #A09B94;
+  --text-disabled: #C8C4BC;
+  
+  --accent: #5B4FD9;
+  --accent-hover: #4A3FC8;
+  --accent-subtle: #EEF0FC;
+  
+  --note-fill: #7B8FE8;
+  --note-selected: #5B4FD9;
+  --note-playing: #3DD68C;
+  
+  --danger: #D94F4F;
+  --danger-subtle: #FDF0F0;
+  
+  --success: #3DD68C;
+  --success-subtle: #F0FDF7;
+  
+  --warning: #E59A2F;
+  --warning-subtle: #FEF8EE;
+  
+  /* Grid Colors */
+  --grid-beat: var(--border-default);
+  --grid-bar: var(--border-strong);
+  --grid-semitone: var(--border-subtle);
+  --grid-black-key: rgba(0, 0, 0, 0.04);
+}
+
+.dark {
+  /* Dark Mode Colors */
+  --bg-base: #1C1B19;
+  --bg-surface: #252421;
+  --bg-sunken: #161614;
+  --bg-overlay: #2E2C29;
+  
+  --border-subtle: #2E2C29;
+  --border-default: #3A3835;
+  --border-strong: #504D48;
+  
+  --text-primary: #F0EEE9;
+  --text-secondary: #9A9590;
+  --text-tertiary: #6B6760;
+  --text-disabled: #3D3B37;
+  
+  --accent: #7B6EF5;
+  --accent-hover: #8F83F8;
+  --accent-subtle: #1E1C35;
+  
+  --note-fill: #5B6FC8;
+  --note-selected: #7B6EF5;
+  --note-playing: #3DD68C;
+  
+  --danger: #F07070;
+  --danger-subtle: #2A1A1A;
+  
+  --success: #3DD68C;
+  --success-subtle: #111F18;
+  
+  --warning: #F0B544;
+  --warning-subtle: #241A08;
+  
+  --grid-black-key: rgba(0, 0, 0, 0.15);
+}
+
+/* Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-weight: var(--font-weight-normal);
+}
+
+input {
+  font-family: inherit;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "projectName": "Japanese Phrases",
+  "bpm": 120,
+  "tracks": [
+    {
+      "id": "t1",
+      "name": "Vocal",
+      "color": "#E8607A",
+      "muted": false,
+      "selected": true,
+      "breathiness": 35,
+      "tension": 60,
+      "gender": 40,
+      "pitchRange": 50
+    }
+  ],
+  "notes": [
+    { "id": "n1",  "pitch": 64, "start": 0,    "duration": 0.5,  "lyric": "a" },
+    { "id": "n2",  "pitch": 66, "start": 0.5,  "duration": 0.5,  "lyric": "i" },
+    { "id": "n3",  "pitch": 68, "start": 1,    "duration": 0.5,  "lyric": "u" },
+    { "id": "n4",  "pitch": 69, "start": 1.5,  "duration": 0.5,  "lyric": "e" },
+    { "id": "n5",  "pitch": 71, "start": 2,    "duration": 1,    "lyric": "o" },
+    
+    { "id": "n6",  "pitch": 64, "start": 4,    "duration": 0.5,  "lyric": "ka" },
+    { "id": "n7",  "pitch": 66, "start": 4.5,  "duration": 0.5,  "lyric": "ki" },
+    { "id": "n8",  "pitch": 68, "start": 5,    "duration": 0.5,  "lyric": "ku" },
+    { "id": "n9",  "pitch": 69, "start": 5.5,  "duration": 0.5,  "lyric": "ke" },
+    { "id": "n10", "pitch": 71, "start": 6,    "duration": 1,    "lyric": "ko" },
+    
+    { "id": "n11", "pitch": 64, "start": 8,    "duration": 0.5,  "lyric": "sa" },
+    { "id": "n12", "pitch": 66, "start": 8.5,  "duration": 0.5,  "lyric": "shi" },
+    { "id": "n13", "pitch": 68, "start": 9,    "duration": 0.5,  "lyric": "su" },
+    { "id": "n14", "pitch": 69, "start": 9.5,  "duration": 0.5,  "lyric": "se" },
+    { "id": "n15", "pitch": 71, "start": 10,   "duration": 1,    "lyric": "so" },
+    
+    { "id": "n16", "pitch": 64, "start": 12,   "duration": 0.5,  "lyric": "ta" },
+    { "id": "n17", "pitch": 66, "start": 12.5, "duration": 0.5,  "lyric": "chi" },
+    { "id": "n18", "pitch": 68, "start": 13,   "duration": 0.5,  "lyric": "tsu" },
+    { "id": "n19", "pitch": 69, "start": 13.5, "duration": 0.5,  "lyric": "te" },
+    { "id": "n20", "pitch": 71, "start": 14,   "duration": 1,    "lyric": "to" },
+    
+    { "id": "n21", "pitch": 64, "start": 16,   "duration": 0.5,  "lyric": "na" },
+    { "id": "n22", "pitch": 66, "start": 16.5, "duration": 0.5,  "lyric": "ni" },
+    { "id": "n23", "pitch": 68, "start": 17,   "duration": 0.5,  "lyric": "nu" },
+    { "id": "n24", "pitch": 69, "start": 17.5, "duration": 0.5,  "lyric": "ne" },
+    { "id": "n25", "pitch": 71, "start": 18,   "duration": 1,    "lyric": "no" }
+  ],
+  "pitchPoints": []
+}

@@ -1,0 +1,32 @@
+{
+  "projectName": "Demo Melody",
+  "bpm": 128,
+  "tracks": [
+    {
+      "id": "t1",
+      "name": "Lead Vocal",
+      "color": "#4DBF90",
+      "muted": false,
+      "selected": true,
+      "breathiness": 40,
+      "tension": 65,
+      "gender": 30,
+      "pitchRange": 50
+    }
+  ],
+  "notes": [
+    { "id": "n1",  "pitch": 60, "start": 0,    "duration": 0.5,  "lyric": "la" },
+    { "id": "n2",  "pitch": 62, "start": 0.5,  "duration": 0.5,  "lyric": "la" },
+    { "id": "n3",  "pitch": 64, "start": 1,    "duration": 0.5,  "lyric": "la" },
+    { "id": "n4",  "pitch": 65, "start": 1.5,  "duration": 0.5,  "lyric": "la" },
+    { "id": "n5",  "pitch": 67, "start": 2,    "duration": 1,    "lyric": "la" },
+    { "id": "n6",  "pitch": 65, "start": 3,    "duration": 0.5,  "lyric": "la" },
+    { "id": "n7",  "pitch": 64, "start": 3.5,  "duration": 0.5,  "lyric": "la" },
+    { "id": "n8",  "pitch": 62, "start": 4,    "duration": 1,    "lyric": "la" },
+    { "id": "n9",  "pitch": 60, "start": 5,    "duration": 1,    "lyric": "la" },
+    { "id": "n10", "pitch": 62, "start": 6,    "duration": 0.5,  "lyric": "la" },
+    { "id": "n11", "pitch": 64, "start": 6.5,  "duration": 0.5,  "lyric": "la" },
+    { "id": "n12", "pitch": 67, "start": 7,    "duration": 1,    "lyric": "la" }
+  ],
+  "pitchPoints": []
+}

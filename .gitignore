@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+electron/electron-src/
+electron/src/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+mlc/.cache/
+mlc/user_modules/.mlc_extracted/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Electron build output
+out/
+release/
+*.AppImage
+*.deb
+*.rpm
+*.dmg
+*.exe
+*.msi
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Env
+.env
+.env.local
+
+# Temp
+*.tmp
+*.temp
+
+# Test artifacts
+coverage/

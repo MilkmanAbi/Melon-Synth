@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Melon Synth</title>
+    <link rel="icon" type="image/png" href="/favicon.png"/>
+  <script>
+    // Apply theme before React paints — no flash of wrong mode
+    // Priority: 1) saved user preference, 2) OS preference
+    (function() {
+      try {
+        var saved = localStorage.getItem('melon-ui-state');
+        if (saved) {
+          var s = JSON.parse(saved);
+          if (typeof s.isDark === 'boolean') {
+            if (s.isDark) document.documentElement.classList.add('dark');
+            return;
+          }
+        }
+        // No saved preference — follow OS
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch(e) {}
+    })();
+  </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
