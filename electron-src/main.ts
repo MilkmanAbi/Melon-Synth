@@ -17,6 +17,7 @@ import {
   shell, nativeTheme, protocol, net
 } from 'electron';
 import { join, resolve }           from 'path';
+import * as cp                      from 'child_process';
 import { existsSync, mkdirSync,
          readFileSync, writeFileSync,
          copyFileSync }             from 'fs';
@@ -86,15 +87,6 @@ async function startMLC(): Promise<void> {
   try {
     mlcBridge = new MLCBridge(MLC_DIR);
     registerMLCHandlers(mlcBridge);
-
-  // Register new addon manager IPC handlers
-  ipcMain.handle('mlc:list-addons-full',   ()                          => mlcBridge!.listAddonsFull());
-  ipcMain.handle('mlc:install-addon-path', (_, src: string)            => mlcBridge!.installAddonFromPath(src));
-  ipcMain.handle('mlc:remove-addon',       (_, id: string)             => mlcBridge!.removeAddon(id));
-  ipcMain.handle('mlc:check-updates',      (_, ids?: string[])         => mlcBridge!.checkAddonUpdates(ids));
-  ipcMain.handle('mlc:apply-update',       (_, id: string, url: string) => mlcBridge!.applyAddonUpdate(id, url));
-  ipcMain.handle('mlc:get-addon-info',     (_, id: string)             => mlcBridge!.getAddonInfo(id));
-  ipcMain.handle('mlc:get-pipeline-trace',  (_, p: any)                 => mlcBridge!.getPipelineTrace(p));
     await mlcBridge.start();
     console.log('[main] MLC engine started');
     registerVoicebankHandlers(VOICEBANKS_DIR, mlcBridge);
@@ -196,10 +188,10 @@ ipcMain.handle('app:get-addons-dir', () => ADDONS_DIR);
 
 /** Open a file picker for .mlc files, install the picked file */
 ipcMain.handle('app:install-addon-dialog', async () => {
-  // Use null parent so the dialog works on all platforms including Wayland
-  const win = mainWindow ?? undefined;
-  if (win && !win.isFocused()) win.focus();
-  const result = await dialog.showOpenDialog(win!, {
+  const win = mainWindow;
+  if (!win) return { ok: false, error: 'No window available' };
+  if (!win.isFocused()) win.focus();
+  const result = await dialog.showOpenDialog(win, {
     title:       'Install Melon Addon or Extension',
     buttonLabel: 'Install',
     filters:     [
@@ -324,7 +316,155 @@ ipcMain.handle('app:check-extension-updates', async () => {
   } catch { return []; }
 });
 
+// ── IPC: Addon Panel Registration (for AddonPanelHost) ───────────────────
+
+ipcMain.handle('addons:get-panels', async () => {
+  try {
+    const { extensionManager } = require('./melon-extension-loader');
+    const exts = extensionManager.listInstalled();
+    const panels: any[] = [];
+    for (const ext of exts) {
+      if (ext.contributes?.panels) {
+        for (const panel of ext.contributes.panels) {
+          panels.push({
+            addon_id:     ext.id,
+            addon_name:   ext.name,
+            id:           `${ext.id}:${panel.id}`,
+            display_name: panel.display_name,
+            icon:         panel.icon,
+            requested_zone: panel.requested_zone,
+            fallback_zone:  panel.fallback_zone,
+            component:    panel.component,
+            entry_path:   join(ADDONS_DIR, '..', 'extensions', ext.id, ext.entry_point ?? 'index.js'),
+            default_visible: panel.default_visible ?? true,
+            resizable:    panel.resizable ?? true,
+            collapsible:  panel.collapsible ?? true,
+          });
+        }
+      }
+    }
+    return panels;
+  } catch { return []; }
+});
+
+ipcMain.handle('addons:get-toolbar-items', async () => {
+  try {
+    const { extensionManager } = require('./melon-extension-loader');
+    const exts = extensionManager.listInstalled();
+    const items: any[] = [];
+    for (const ext of exts) {
+      for (const item of (ext.contributes?.toolbar_items ?? [])) {
+        items.push({ addon_id: ext.id, ...item });
+      }
+    }
+    return items;
+  } catch { return []; }
+});
+
+ipcMain.handle('addons:get-menu-items', async () => {
+  try {
+    const { extensionManager } = require('./melon-extension-loader');
+    const exts = extensionManager.listInstalled();
+    const items: any[] = [];
+    for (const ext of exts) {
+      for (const item of (ext.contributes?.menu_items ?? [])) {
+        items.push({ addon_id: ext.id, ...item });
+      }
+    }
+    return items;
+  } catch { return []; }
+});
+
+ipcMain.handle('addons:get-commands', async () => {
+  try {
+    const { extensionManager } = require('./melon-extension-loader');
+    const exts = extensionManager.listInstalled();
+    const cmds: any[] = [];
+    for (const ext of exts) {
+      for (const cmd of (ext.contributes?.commands ?? [])) {
+        cmds.push({ addon_id: ext.id, ...cmd });
+      }
+    }
+    return cmds;
+  } catch { return []; }
+});
+
+ipcMain.handle('addons:execute-command', async (_, cmdId: string) => {
+  try {
+    const { extensionManager } = require('./melon-extension-loader');
+    return extensionManager.executeCommand(cmdId);
+  } catch (e: any) { return { ok: false, error: e.message }; }
+});
+
 // ── IPC: File dialogs ─────────────────────────────────────────────────────
+
+// ── IPC: Render pipeline (UST → OpenUTAU → WAV) ─────────────────────────
+
+ipcMain.handle('render:generate-ust', async (_, params: any) => {
+  if (!mlcBridge) return { ok: false, error: 'MLC engine not running' };
+  try {
+    return await mlcBridge.request('generate_ust', params);
+  } catch (e: any) { return { ok: false, error: e.message }; }
+});
+
+ipcMain.handle('render:render', async (_, params: any) => {
+  if (!mlcBridge) return { ok: false, error: 'MLC engine not running' };
+  try {
+    // Check for bundled OpenUTAU first
+    let openutauPath = params.openutau_path;
+    if (!openutauPath) {
+      try {
+        const { detectOpenUTAU } = require('./openutau-bundler');
+        const status = detectOpenUTAU();
+        if (status?.path) openutauPath = status.path;
+      } catch {}
+    }
+
+    // Build render request — full pipeline: notes → UST → OpenUTAU → WAV
+    const renderParams: any = {
+      notes:          params.notes || [],
+      tempo:          params.tempo || params.bpm || 120,
+      voice_dir:      params.voice_dir || params.voicebank_path,
+      voicebank_path: params.voice_dir || params.voicebank_path,
+      project_name:   params.project_name || 'melon_render',
+      track_params:   params.track_params || {},
+      pitch_points:   params.pitch_points || [],
+      mlc_tokens:     params.mlc_tokens || [],
+    };
+    if (openutauPath) renderParams.openutau_path = openutauPath;
+    if (params.out_wav) renderParams.out_wav = params.out_wav;
+
+    // Send render progress to renderer
+    const result = await mlcBridge.request('render', renderParams);
+
+    // Notify renderer on completion
+    if (result?.ok && mainWindow) {
+      mainWindow.webContents.send('render:complete', result);
+    } else if (!result?.ok && mainWindow) {
+      mainWindow.webContents.send('render:error', result);
+    }
+
+    return result;
+  } catch (e: any) {
+    const err = { ok: false, error: e.message };
+    if (mainWindow) mainWindow.webContents.send('render:error', err);
+    return err;
+  }
+});
+
+ipcMain.handle('editor:detect', async () => {
+  if (!mlcBridge) return [];
+  try {
+    return await mlcBridge.request('detect_editors');
+  } catch { return []; }
+});
+
+ipcMain.handle('editor:open', async (_, params: any) => {
+  if (!mlcBridge) return { ok: false, error: 'MLC engine not running' };
+  try {
+    return await mlcBridge.request('open_editor', params);
+  } catch (e: any) { return { ok: false, error: e.message }; }
+});
 
 ipcMain.handle('dialog:open-project', async () => {
   if (!mainWindow) return null;
@@ -369,6 +509,39 @@ ipcMain.handle('fs:write-file', async (_, filePath: string, content: string) => 
   } catch (e: any) { return { ok: false, error: e.message }; }
 });
 
+/** Save a .loid project as a ZIP with structured JSON files */
+ipcMain.handle('fs:save-project-zip', async (_, filePath: string, files: Record<string, string>) => {
+  try {
+    const AdmZip = require('adm-zip');
+    const zip = new AdmZip();
+    for (const [name, content] of Object.entries(files)) {
+      zip.addFile(name, Buffer.from(content as string, 'utf8'));
+    }
+    zip.writeZip(filePath);
+    return { ok: true };
+  } catch (e: any) { return { ok: false, error: e.message }; }
+});
+
+/** Read a .loid project ZIP and return all file contents as {filename: content} */
+ipcMain.handle('fs:read-project-zip', async (_, filePath: string) => {
+  try {
+    const AdmZip = require('adm-zip');
+    const zip = new AdmZip(filePath);
+    const entries = zip.getEntries();
+    const files: Record<string, string> = {};
+    for (const entry of entries) {
+      if (!entry.isDirectory) {
+        files[entry.entryName] = entry.getData().toString('utf8');
+      }
+    }
+    // Check if this is actually a ZIP (has manifest.json) or just plain JSON
+    if (!files['manifest.json']) return null; // not a ZIP project, let caller try plain JSON
+    return files;
+  } catch {
+    return null; // not a valid ZIP, let caller try plain JSON
+  }
+});
+
 ipcMain.handle('fs:read-file', async (_, filePath: string) => {
   try {
     const { readFileSync } = require('fs');
@@ -409,6 +582,113 @@ ipcMain.handle('app:get-system-dark', () => nativeTheme.shouldUseDarkColors);
 
 nativeTheme.on('updated', () => {
   mainWindow?.webContents.send('app:system-dark-changed', nativeTheme.shouldUseDarkColors);
+});
+
+// ── IPC: MTI (Melon Terminal Interface) ──────────────────────────────────
+
+/** Stateful terminal sessions — one pty per session ID */
+const mtiSessions = new Map<string, cp.ChildProcess>();
+
+/** Spawn a persistent shell session for the terminal */
+ipcMain.handle('mti:spawn-session', async (_, sessionId: string) => {
+  if (mtiSessions.has(sessionId)) return { ok: true, reused: true };
+  try {
+    const shellCmd = process.platform === 'win32' ? 'cmd.exe' : (process.env.SHELL || '/bin/bash');
+    const child = cp.spawn(shellCmd, [], {
+      cwd: PROJECT_ROOT,
+      env: {
+        ...process.env,
+        MELON_SYNTH: '1',
+        MLC_DIR: MLC_DIR,
+        TERM: 'xterm-256color',
+      },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    mtiSessions.set(sessionId, child);
+
+    child.stdout?.setEncoding('utf8');
+    child.stderr?.setEncoding('utf8');
+
+    child.stdout?.on('data', (data: string) => {
+      mainWindow?.webContents.send('mti:stdout', sessionId, data);
+    });
+    child.stderr?.on('data', (data: string) => {
+      mainWindow?.webContents.send('mti:stderr', sessionId, data);
+    });
+    child.on('exit', (code) => {
+      mainWindow?.webContents.send('mti:exit', sessionId, code);
+      mtiSessions.delete(sessionId);
+    });
+
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e.message };
+  }
+});
+
+/** Write to a session's stdin */
+ipcMain.handle('mti:write', async (_, sessionId: string, data: string) => {
+  const proc = mtiSessions.get(sessionId);
+  if (!proc?.stdin) return { ok: false, error: 'Session not found' };
+  proc.stdin.write(data);
+  return { ok: true };
+});
+
+/** Kill a session */
+ipcMain.handle('mti:kill', async (_, sessionId: string) => {
+  const proc = mtiSessions.get(sessionId);
+  if (proc) { proc.kill('SIGTERM'); mtiSessions.delete(sessionId); }
+  return { ok: true };
+});
+
+/** Run a one-shot command and return full output (for MLC pipeline debug, etc.) */
+ipcMain.handle('mti:exec', async (_, cmd: string, cwd?: string) => {
+  return new Promise((resolve) => {
+    cp.exec(cmd, {
+      cwd:     cwd ?? PROJECT_ROOT,
+      timeout: 30_000,
+      env:     { ...process.env, MELON_SYNTH: '1', MLC_DIR },
+    }, (error, stdout, stderr) => {
+      resolve({ ok: !error, stdout, stderr, code: error?.code ?? 0 });
+    });
+  });
+});
+
+/** Run a Python command through MLC's Python environment */
+ipcMain.handle('mti:python', async (_, script: string) => {
+  const python = process.platform === 'win32' ? 'python' : 'python3';
+  return new Promise((resolve) => {
+    cp.exec(`${python} -c "${script.replace(/"/g, '\\"')}"`, {
+      cwd:     MLC_DIR,
+      timeout: 30_000,
+      env:     { ...process.env, PYTHONPATH: MLC_DIR },
+    }, (error, stdout, stderr) => {
+      resolve({ ok: !error, stdout, stderr, code: error?.code ?? 0 });
+    });
+  });
+});
+
+/** List available MLC commands for autocomplete */
+ipcMain.handle('mti:mlc-commands', async () => {
+  return [
+    'mlc convert <text> [--module <id>] [--singability <0-1>]',
+    'mlc modules',
+    'mlc addons',
+    'mlc trace <text> [--module <id>]',
+    'mlc cache stats',
+    'mlc cache clear [g2p|phrase|all]',
+    'mlc detect <text>',
+    'mlc ping',
+    'render ust [--output <path>]',
+    'render detect-editors',
+    'render open-editor',
+    'vb list',
+    'vb detect',
+    'ext list',
+    'ext install <path>',
+    'ext remove <id>',
+    'help',
+  ];
 });
 
 // ── IPC: Window controls (Windows/Linux) ─────────────────────────────────

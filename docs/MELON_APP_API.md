@@ -209,16 +209,17 @@ Extensions declare which capabilities they need in `manifest.json`:
 
 | Permission | What it allows |
 |------------|----------------|
-| `notes.read` | Read notes from the project |
-| `notes.write` | Add, modify, delete notes |
-| `mlc.read` | Call MLC conversion |
-| `mlc.write` | Install MLC modules |
-| `project.read` | Read project metadata (BPM, name, etc.) |
-| `project.write` | Modify BPM, project name |
-| `microphone` | Access the microphone |
-| `file.read` | Open files from disk |
-| `file.write` | Save files to disk |
-| `network` | Make HTTP requests |
+| `project.read` | Read notes, tracks, BPM, project metadata |
+| `project.write` | Add, modify, delete notes and tracks, change BPM |
+| `mlc.convert` | Call MLC conversion engine |
+| `audio.play` | Trigger audio playback (preview notes) |
+| `audio.capture` | Capture audio stream from microphone |
+| `microphone` | Access the microphone (MediaDevices) |
+| `filesystem.read` | Read files from disk via OS dialog |
+| `filesystem.write` | Write/save files to disk via OS dialog |
+| `network` | Make outbound HTTP requests |
+| `notifications` | Show notifications in the bell panel |
+| `clipboard` | Read/write system clipboard |
 
 Users see the permission list before installing. Permissions not declared are blocked.
 
@@ -294,3 +295,180 @@ async function insert() {
 - Timeline tracks (add a separate track type)  
 - Real-time audio analysis plugins
 - Collaboration extensions (shared cursors, comments)
+
+---
+
+## React Panel Extensions (v0.6+)
+
+Instead of a separate webview, you can write a React component that mounts directly inside Melon Synth's layout. This is the **preferred approach** for panels, sidebars, and toolbars.
+
+### How it works
+
+1. Your `.melon` bundle includes a compiled React component (in `index.js`)
+2. Your `manifest.json` declares `contributes.panels` with layout zones
+3. Melon Synth's `AddonPanelHost` mounts your component and passes a `melonAPI` prop
+
+### manifest.json for a React panel
+
+```json
+{
+  "id":          "vibrato_editor",
+  "name":        "Advanced Vibrato",
+  "version":     "1.0.0",
+  "type":        "app_addon",
+  "min_melon":   "0.6.0",
+  "entry_point": "index.js",
+  "permissions": ["project.read", "project.write"],
+
+  "contributes": {
+    "panels": [
+      {
+        "id":             "vibrato_panel",
+        "display_name":   "Advanced Vibrato",
+        "icon":           "Activity",
+        "requested_zone": "voice_panel_bottom",
+        "fallback_zone":  "right_sidebar",
+        "collapsible":    true,
+        "resizable":      true,
+        "component":      "VibratoPanel"
+      }
+    ],
+    "commands": [
+      { "id": "vibrato.reset",  "label": "Reset vibrato" },
+      { "id": "vibrato.preset", "label": "Apply vibrato preset" }
+    ],
+    "toolbar_items": [
+      { "id": "vibrato_btn", "icon": "Activity", "tooltip": "Vibrato Editor", "command": "vibrato.open" }
+    ]
+  }
+}
+```
+
+### Writing the React component (index.js)
+
+```jsx
+// Use window.React — it's exposed by Melon Synth
+const { useState, useEffect } = window.React;
+
+function VibratoPanel({ melonAPI }) {
+  const [notes, setNotes] = useState([]);
+
+  useEffect(() => {
+    setNotes(melonAPI.project.getSelectedNotes());
+    const unsub = melonAPI.project.on('change', () => {
+      setNotes(melonAPI.project.getSelectedNotes());
+    });
+    return unsub;
+  }, []);
+
+  return window.React.createElement('div', {
+    style: { padding: 12, fontFamily: 'var(--font-ui)', fontSize: 'var(--text-sm)' }
+  },
+    window.React.createElement('div', {
+      style: { fontWeight: 500, color: 'var(--text-primary)', marginBottom: 8 }
+    }, `Vibrato · ${notes.length} selected`),
+    // ... your UI here
+  );
+}
+
+// Register exports so AddonPanelHost can find the component
+window.__MELON_ADDON_EXPORTS__ = { VibratoPanel };
+```
+
+### Layout zones
+
+| Zone | Location | Best for |
+|------|----------|----------|
+| `voice_panel_bottom` | Below voice sliders (left sidebar) | Voice/track tools |
+| `voice_panel_tab` | Extra tab in voice panel | Alternative views |
+| `editor_toolbar` | Above piano roll | Tool buttons |
+| `editor_bottom` | Below lyrics lane | Analysis, waveform |
+| `right_sidebar` | Right side panel | Inspectors, browsers |
+| `floating_window` | Standalone draggable | Big tools |
+| `command_bar_right` | Top-right of command bar | Quick actions |
+
+### melonAPI reference (prop passed to your component)
+
+```typescript
+interface MelonAddonAPI {
+  project: {
+    getNotes():            Note[];
+    getTracks():           Track[];
+    getBpm():              number;
+    getProjectName():      string;
+    getPlayheadPosition(): number;
+    getSelectedNotes():    Note[];
+    addNote(note):         Promise<string>;  // returns note ID
+    updateNote(id, patch): Promise<void>;
+    deleteNote(id):        Promise<void>;
+    setLyric(id, lyric):   Promise<void>;
+    setBpm(bpm):           Promise<void>;
+    on(event, callback):   () => void;  // returns unsubscribe fn
+  };
+  mlc: {
+    convert(params):            Promise<ConversionResult>;
+    listModules():              Promise<ModuleInfo[]>;
+    detectLanguage(text):       Promise<string>;
+    suggestSingability(params): Promise<{suggested, reason}>;
+  };
+  audio: {
+    playNote(pitch, dur, vel):  void;
+    stopAllNotes():             void;
+    isPlaying():                boolean;
+  };
+  ui: {
+    notify(n):       void;    // {type, title, body}
+    getTheme():      string;  // 'dark' | 'light'
+    onThemeChange(cb): () => void;
+    getToken(name):  string;  // CSS custom property value
+  };
+  storage: {
+    get(key):        Promise<any>;
+    set(key, value): Promise<void>;
+  };
+}
+```
+
+### Design tokens for addon CSS
+
+Use CSS variables for colors so your addon works in both light and dark mode:
+
+```css
+/* Always use these — never hardcode hex values */
+var(--bg-base)         /* page background */
+var(--bg-surface)      /* card/panel background */
+var(--bg-sunken)       /* input/inset background */
+var(--text-primary)    /* main text */
+var(--text-secondary)  /* labels, descriptions */
+var(--text-tertiary)   /* hints, timestamps */
+var(--accent)          /* melon green — buttons, links */
+var(--border-subtle)   /* light borders */
+var(--border-default)  /* standard borders */
+var(--font-ui)         /* Inter — body text */
+var(--font-mono)       /* JetBrains Mono — code, values */
+var(--text-sm)         /* 12px */
+var(--text-base)       /* 14px */
+var(--radius-md)       /* 6px — buttons, inputs */
+var(--radius-lg)       /* 8px — cards */
+```
+
+---
+
+## MTI Access for Extensions
+
+Extensions can use the Melon Terminal Interface for debugging:
+
+```javascript
+// Run a shell command
+const result = await window.mti.exec('ls -la', '/some/path');
+
+// Run Python in MLC environment
+const pyResult = await window.mti.python('from core.g2p import G2PEngine; print("ok")');
+
+// Spawn a persistent shell session
+await window.mti.spawnSession('my-ext-session');
+await window.mti.write('my-ext-session', 'echo hello\n');
+window.mti.onStdout((id, data) => {
+  if (id === 'my-ext-session') console.log(data);
+});
+```

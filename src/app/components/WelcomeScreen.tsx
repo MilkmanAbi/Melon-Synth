@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, FolderOpen, Music2, Clock, ChevronRight, Sparkles } from 'lucide-react';
 import { newProject, openProject } from '../../subsystems/project-io';
 import { useProjectStore } from '../../store/project';
+import { withLock } from '../../subsystems/async-lock';
 
 interface RecentFile { path: string; name: string; modified: string; }
 
@@ -45,41 +46,49 @@ export function WelcomeScreen({ onDismiss }: Props) {
   const store = useProjectStore();
 
   useEffect(() => {
-    // One-time cleanup: remove corrupt recent entries left by old bug
-    const clean = getRecent(); // getRecent now sanitizes
+    const clean = getRecent();
     localStorage.setItem('melon_recent_projects', JSON.stringify(clean));
     setRecent(clean);
   }, []);
 
   const handleNew = () => {
+    if (loading) return;
     store.loadProject(newProject('untitled'));
     onDismiss();
   };
 
   const handleOpen = async () => {
+    if (loading) return;
     setLoading('open');
-    const result = await openProject();
-    setLoading(null);
-    if (!result) return;
-    const { project, path } = result as any;
-    store.loadProject(project ?? result);  // compat: v2 returns {project,path}, v1 returned project
-    if (path) store.setCurrentFilePath(path);
-    if (path) addToRecent(path, (project ?? result)?.name ?? 'untitled');
-    onDismiss();
-    // Scroll piano roll to the first note
-    setTimeout(() => {
-      const wrap = document.querySelector('[data-piano-scroll]') as HTMLElement;
-      if (wrap) {
-        const notes = store.notes;
-        if (notes.length > 0) {
-          const firstBeat = Math.min(...notes.map(n => n.start));
-          wrap.scrollLeft = Math.max(0, firstBeat * 84 - 100);
-        }
-      }
-    }, 100);
+    try {
+      await withLock('file-dialog', async () => {
+        const result = await openProject();
+        if (!result) return;
+        const { project, path } = result as any;
+        store.loadProject(project ?? result);
+        if (path) store.setCurrentFilePath(path);
+        if (path) addToRecent(path, (project ?? result)?.name ?? 'untitled');
+        onDismiss();
+        setTimeout(() => {
+          const wrap = document.querySelector('[data-piano-scroll]') as HTMLElement;
+          if (wrap) {
+            const notes = store.notes;
+            if (notes.length > 0) {
+              const firstBeat = Math.min(...notes.map(n => n.start));
+              wrap.scrollLeft = Math.max(0, firstBeat * 84 - 100);
+            }
+          }
+        }, 100);
+      });
+    } catch (e: any) {
+      store.notify({ type: 'error', title: 'Failed to open project', body: e?.message || 'Unknown error' });
+    } finally {
+      setLoading(null);  // ALWAYS clear — even if withLock skipped, even if dialog cancelled
+    }
   };
 
   const handleRecent = async (file: RecentFile) => {
+    if (loading) return;
     setLoading(file.path);
     try {
       const { loadFromPath } = await import('../../subsystems/project-io');
@@ -90,7 +99,6 @@ export function WelcomeScreen({ onDismiss }: Props) {
       onDismiss();
     } catch {
       store.notify({ type: 'error', title: 'Could not open file', body: file.path });
-      // Remove from recents if missing
       const updated = getRecent().filter(r => r.path !== file.path);
       localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
       setRecent(updated);
@@ -99,8 +107,8 @@ export function WelcomeScreen({ onDismiss }: Props) {
     }
   };
 
-  // Load example - try Electron readFile first, then fetch
   const handleExample = async (file: string) => {
+    if (loading) return;
     setLoading(file);
     try {
       let project: any = null;
@@ -121,7 +129,6 @@ export function WelcomeScreen({ onDismiss }: Props) {
           if (r.ok) project = await r.json();
         } catch {}
       }
-      if (!project) throw new Error('Could not load example file');
       if (!project) throw new Error('Could not load example file');
       store.loadProject(project);
       onDismiss();
@@ -150,17 +157,12 @@ export function WelcomeScreen({ onDismiss }: Props) {
       animation: 'fadeIn 200ms ease-out both',
       overflow: 'hidden',
     }}>
-      {/* Background wallpaper */}
+      {/* Background wallpaper — displayed at full fidelity, no overlays */}
       <div style={{
         position: 'absolute', inset: 0,
         backgroundImage: 'url(/welcome-bg.png)',
         backgroundSize: 'cover', backgroundPosition: 'center',
         opacity: 1.0, pointerEvents: 'none',
-      }}/>
-      <div style={{
-        position: 'absolute', inset: 0,
-        background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.25) 100%)',
-        pointerEvents: 'none',
       }}/>
 
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -182,10 +184,10 @@ export function WelcomeScreen({ onDismiss }: Props) {
         {/* Card */}
         <div style={{
           width: 600,
-          background: 'rgba(255,255,255,0.93)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '0.5px solid rgba(255,255,255,0.7)',
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          border: '0.5px solid rgba(255,255,255,0.5)',
           borderRadius: 16,
           overflow: 'hidden',
           boxShadow: '0 16px 48px rgba(0,0,0,0.10)',
@@ -199,13 +201,15 @@ export function WelcomeScreen({ onDismiss }: Props) {
             ].map(btn => {
               const Icon = btn.icon;
               return (
-                <button key={btn.id} onClick={btn.onClick} disabled={loading === 'open' && btn.id === 'open'}
+                <button key={btn.id} onClick={btn.onClick} disabled={!!loading}
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     gap: 10, padding: '24px 20px',
                     background: 'transparent',
                     borderRight: btn.id === 'new' ? '0.5px solid var(--border-subtle)' : 'none',
-                    cursor: 'pointer', transition: 'background var(--duration-fast)',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    opacity: loading ? 0.5 : 1,
+                    transition: 'background var(--duration-fast), opacity var(--duration-fast)',
                   }}
                   onMouseEnter={e => (e.currentTarget.style.background = btn.accent ? 'rgba(77,191,144,0.07)' : 'rgba(0,0,0,0.03)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}

@@ -414,6 +414,145 @@ Session 6: Electron launch fixes (ESM/CJS conflict, --no-sandbox for Linux, wron
 Session 7: Welcome screen, MLCWindow popup, MLC fallback for old engine, theme timing fix, native window frame (no fake traffic lights)
 Session 8: Working menus (File/Edit/View/Help all wired), MLCClient with fallback rule engine, project save/load, render callback, rAF playback
 Session 9: Fixed canvasCoords double-scroll bug (root cause of all hit-test failures), fixed slider conflicts, VoicePanel full rewrite, TransportBar full rewrite with proper drag, logo wired, MLC engine path fixed (v1→v2), inline lyric editing (double-click), piano range expanded
+Session 10 (v0.6): **Major fixes + MTI + Extension UI + Render pipeline.**
+  - PHASE 1 BUG FIXES:
+    - Fixed duplicate IPC handler registration crash (7 handlers in both registerMLCHandlers AND startMLC)
+    - Fixed welcome screen wallpaper dimming (removed radial-gradient overlay darkening hand-drawn art)
+    - Fixed "Browse for addon file" button (null window crash, browser-dev-mode fallback)
+    - Fixed missing mlc:get-pipeline-trace in registerMLCHandlers
+  - PHASE 2 MELON TERMINAL INTERFACE (MTI):
+    - New: MelonTerminal.tsx — tabbed terminal (Shell/MLC/Python modes)
+    - New: 6 IPC handlers in main.ts (mti:spawn-session, mti:write, mti:kill, mti:exec, mti:python, mti:mlc-commands)
+    - New: window.mti API in preload.ts
+    - Built-in MLC command router: convert, trace, modules, addons, detect, cache, ping, help
+    - Command history (Up/Down), Ctrl+L clear, Ctrl+C interrupt, resize drag
+    - Wired: Ctrl+` shortcut, View menu entry, Command Palette entry
+    - Docs: docs/MTI.md
+  - PHASE 3 EXTENSION UI PLACEMENTS:
+    - New: window.melonAddons API (getPanels, getToolbarItems, getMenuItems, getCommands, executeCommand, callBackend)
+    - New: 5 IPC handlers for addon panel/toolbar/menu/command registration
+    - Wired: AddonPanelHost placed at editor_bottom and right_sidebar zones in App.tsx
+    - Command Palette: added "Manage Extensions" and "Install addon from file…"
+  - PHASE 4 RENDER PIPELINE END-TO-END:
+    - **THE FIX**: Added 4 missing IPC handlers (render:render, render:generate-ust, editor:detect, editor:open)
+    - These were the ONLY missing piece — Python side was complete, App.tsx render callback was complete
+    - Full chain now: handleRender → IPC → mlcBridge → Python → UST → OpenUTAU CLI → WAV → audio.loadWAVFromPath
+    - Integrates with openutau-bundler.ts for auto-detection of bundled/system OpenUTAU
+  - DOCUMENTATION:
+    - Updated electron.d.ts with complete type declarations for ALL window APIs
+    - Created docs/MTI.md
+    - Updated this HANDOFF.md
+
+---
+
+## UPDATED STATE (v0.6)
+
+### What NEWLY works (added in session 10):
+- ✅ End-to-end vocal render pipeline (notes → MLC → UST → OpenUTAU → WAV → play)
+- ✅ MTI terminal with Shell/MLC/Python tabs
+- ✅ MLC pipeline debugging via MTI (mlc> trace, convert, modules, etc.)
+- ✅ Extension panel system wired into layout (editor_bottom, right_sidebar zones)
+- ✅ Extension registration API (panels, toolbars, menus, commands)
+- ✅ Browse addon file button works in Electron mode
+- ✅ Welcome screen shows wallpaper at full fidelity (no dimming)
+- ✅ No more duplicate IPC handler crashes
+
+### What does NOT work yet (updated priority order):
+1. **Voicebank download + install** — catalog shows banks, download button exists, ZIP extract not fully tested
+2. **Teto voicebank not pre-installed** — user has to download manually
+3. **Pitch curve editor is visual-only** — no interactive control point drag yet
+4. **OpenUTAU bundled download** — openutau-bundler.ts can detect but download flow not tested
+5. **Keyboard shortcut remapping** — panel shows shortcuts, remapping not saved
+6. **Project name editing** — hardcoded "untitled", not editable inline
+7. **.melon extension hot-reload** — installed extensions need app restart
+
+---
+
+## NEW: MELON TERMINAL INTERFACE (MTI)
+
+### Architecture
+```
+┌─────────────────────────────────────────────────┐
+│  RENDERER — MelonTerminal.tsx                    │
+│  Tab system: Shell | MLC | Python                │
+│  Built-in MLC command router (no IPC for basic)  │
+│  Shell/Python tabs use IPC for real execution     │
+└─────────────────────────────────────────────────┘
+           ↕ IPC (preload: window.mti)
+┌─────────────────────────────────────────────────┐
+│  MAIN PROCESS — mti: handlers                    │
+│  mti:spawn-session → child_process.spawn(shell)  │
+│  mti:write → stdin.write(data)                   │
+│  mti:exec → child_process.exec(cmd)              │
+│  mti:python → child_process.exec(python3 -c ...) │
+└─────────────────────────────────────────────────┘
+```
+
+### MLC commands (no IPC, runs in renderer):
+`convert`, `modules`, `addons`, `trace`, `detect`, `cache stats`, `cache clear`, `ping`, `help`
+
+### Opening: Ctrl+` or View → Terminal (MTI) or Cmd+K → "Toggle Terminal"
+
+---
+
+## NEW: EXTENSION UI PLACEMENT SYSTEM
+
+### Layout zones (defined in melon-addon-types.ts):
+```
+voice_panel_bottom   — below voice properties (left sidebar)
+voice_panel_tab      — extra tab in voice panel tab bar
+editor_toolbar       — extra toolbar row above piano roll
+editor_bottom        — below lyrics lane (WIRED in App.tsx)
+right_sidebar        — collapsible right panel (WIRED in App.tsx)
+floating_window      — standalone draggable panel
+command_bar_right    — buttons in command bar right section
+status_bar           — status bar additions
+welcome_screen       — welcome screen additions
+```
+
+### For addon developers:
+1. Create a .melon ZIP with manifest.json declaring `contributes.panels`
+2. Each panel specifies `requested_zone`, `component` (React export name), `collapsible`, `resizable`
+3. Install via Extensions panel or drag-and-drop
+4. AddonPanelHost automatically loads and mounts panels at the correct zone
+5. Addon receives `melonAPI` prop with full project/mlc/audio/ui/storage access
+
+---
+
+## NEW: COMPLETE IPC MAP (all channels)
+
+### MLC Engine (window.mlc → mlc:*)
+`ping, convert, preview, list-modules, list-all-addons, detect-lang, suggest-singability,
+cache-stats, cache-clear, list-addons-full, install-addon-path, remove-addon,
+check-updates, apply-update, get-addon-info, get-pipeline-trace`
+
+### App/OS (window.app → app:* / dialog:* / fs:* / shell:*)
+`save-ui-state, get-ui-state, get-addons-dir, install-addon-dialog, install-addon,
+uninstall-addon, install-extension, remove-extension, list-extensions, open-extension-ui,
+check-extension-updates, read-melon-manifest, extension-call-backend,
+dialog:open-project, dialog:save-project, dialog:export-wav,
+fs:write-file, fs:read-file, fs:exists, shell:open-path, shell:open-url,
+app:get-system-dark`
+
+### Render (window.render → render:* / editor:*)
+`render:generate-ust, render:render, editor:detect, editor:open`
+Events: `render:complete, render:error`
+
+### MTI (window.mti → mti:*)
+`mti:spawn-session, mti:write, mti:kill, mti:exec, mti:python, mti:mlc-commands`
+Events: `mti:stdout, mti:stderr, mti:exit`
+
+### Addons (window.melonAddons → addons:*)
+`addons:get-panels, addons:get-toolbar-items, addons:get-menu-items,
+addons:get-commands, addons:execute-command`
+Events: `addons:loaded, addons:unloaded`
+
+### Voicebanks (window.voicebanks → vb:*)
+`vb:list, vb:detect-system, vb:download, vb:install-from-zip, vb:open-folder`
+Events: `vb:download-progress`
+
+### Window (window.electron → win:*)
+`win:minimize, win:maximize, win:close, win:is-maximized`
 
 Good luck. This project is genuinely good — "dangerously close to being actually good."
 Don't let it become less than that.

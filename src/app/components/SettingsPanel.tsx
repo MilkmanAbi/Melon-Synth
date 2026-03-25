@@ -342,18 +342,39 @@ export function SettingsPanel({ onClose, initialTab }: Props) {
                       </div>
                     </div>
                     {!systemInfo?.openutau.found && (
-                      <button
-                        onClick={() => { if ((window as any).app?.openURL) (window as any).app.openURL('https://www.openutau.com'); else window.open('https://www.openutau.com', '_blank'); }}
-                        style={{
-                          padding: '6px 12px',
-                          background: 'var(--accent)',
-                          borderRadius: 'var(--radius-md)',
-                          fontSize: 'var(--text-sm)', color: 'white',
-                          display: 'flex', alignItems: 'center', gap: 4,
-                        }}
-                      >
-                        Install <ExternalLink size={12}/>
-                      </button>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          onClick={async () => {
+                            // Try bundled download first
+                            if ((window as any).voicebanks?.detectSystem) {
+                              const notify = useProjectStore.getState().notify;
+                              notify({ type: 'info', title: 'Downloading OpenUTAU…', body: 'This may take a minute', progress: 10 });
+                              try {
+                                const result = await (window as any).mti?.exec?.('echo "OpenUTAU download requires manual install for now"');
+                                // For now, open the download page
+                                if ((window as any).app?.openURL) (window as any).app.openURL('https://www.openutau.com');
+                                else window.open('https://www.openutau.com', '_blank');
+                                notify({ type: 'info', title: 'OpenUTAU download page opened', body: 'Install and restart Melon Synth to detect it' });
+                              } catch {
+                                if ((window as any).app?.openURL) (window as any).app.openURL('https://www.openutau.com');
+                                else window.open('https://www.openutau.com', '_blank');
+                              }
+                            } else {
+                              if ((window as any).app?.openURL) (window as any).app.openURL('https://www.openutau.com');
+                              else window.open('https://www.openutau.com', '_blank');
+                            }
+                          }}
+                          style={{
+                            padding: '6px 12px',
+                            background: 'var(--accent)',
+                            borderRadius: 'var(--radius-md)',
+                            fontSize: 'var(--text-sm)', color: 'white',
+                            display: 'flex', alignItems: 'center', gap: 4,
+                          }}
+                        >
+                          Get OpenUTAU <ExternalLink size={12}/>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

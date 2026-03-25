@@ -7,8 +7,9 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Search, FileText, Edit2, Music2, Settings, Layers, Mic2,
-         ChevronRight, Loader2 } from 'lucide-react';
+         ChevronRight, Loader2, Terminal } from 'lucide-react';
 import { useProjectStore } from '../../store/project';
+import { withLock } from '../../subsystems/async-lock';
 
 interface Command {
   id:       string;
@@ -47,8 +48,8 @@ export function CommandPalette({ onClose }: Props) {
     { id:'new',          label:'New project',           category:'File', shortcut:'⌘N',
       icon:<FileText size={13}/>,
       action: () => { store.loadProject({ version:'1.0', name:'untitled', bpm:120, timeSig:[4,4], tracks:store.tracks, notes:[], pitchPoints:[], createdAt:new Date().toISOString(), modifiedAt:new Date().toISOString() } as any); }},
-    { id:'open',         label:'Open project…',         category:'File', shortcut:'⌘O',  icon:<FileText size={13}/>, action: async () => { const {openProject} = await import('../../subsystems/project-io'); const p = await openProject(); if (p) store.loadProject(p); }},
-    { id:'save',         label:'Save project',          category:'File', shortcut:'⌘S',  icon:<FileText size={13}/>, action: async () => { const {saveProject,serializeProject} = await import('../../subsystems/project-io'); const p = serializeProject(store.projectName,store.bpm,store.tracks,store.notes,store.pitchPoints); await saveProject(p, store.currentFilePath??null); store.setDirty(false); }},
+    { id:'open',         label:'Open project…',         category:'File', shortcut:'⌘O',  icon:<FileText size={13}/>, action: () => { withLock('file-dialog', async () => { const {openProject} = await import('../../subsystems/project-io'); const p = await openProject(); if (p) store.loadProject(p); }); }},
+    { id:'save',         label:'Save project',          category:'File', shortcut:'⌘S',  icon:<FileText size={13}/>, action: () => { withLock('file-dialog', async () => { const {saveProject,serializeProject} = await import('../../subsystems/project-io'); const p = serializeProject(store.projectName,store.bpm,store.tracks,store.notes,store.pitchPoints); await saveProject(p, store.currentFilePath??null); store.setDirty(false); }); }},
     // Edit
     { id:'undo',         label:'Undo',                  category:'Edit', shortcut:'⌘Z',  action:()=>store.undo()    },
     { id:'redo',         label:'Redo',                  category:'Edit', shortcut:'⌘⇧Z', action:()=>store.redo()    },
@@ -87,6 +88,9 @@ export function CommandPalette({ onClose }: Props) {
     { id:'bpm-down',    label:'BPM -1',        category:'Transport', action:()=>store.setBpm(Math.max(20,store.bpm-1))  },
     // Settings
     { id:'settings',    label:'Open settings', category:'App', shortcut:'⌘,', icon:<Settings size={13}/>, action:()=>{ onClose(); setTimeout(()=>document.dispatchEvent(new CustomEvent('open-settings')),10); }},
+    { id:'terminal',    label:'Toggle Terminal (MTI)', category:'App', shortcut:'⌃`', icon:<Terminal size={13}/>, action:()=>{ onClose(); setTimeout(()=>document.dispatchEvent(new CustomEvent('open-mti')),10); }},
+    { id:'extensions',  label:'Manage Extensions',     category:'App', icon:<Layers size={13}/>,   action:()=>{ onClose(); setTimeout(()=>document.dispatchEvent(new CustomEvent('open-extensions')),10); }},
+    { id:'ext-install', label:'Install addon from file…', category:'App',                           action:()=>{ onClose(); setTimeout(()=>document.dispatchEvent(new CustomEvent('open-extensions-install')),10); }},
   ], [store]);
 
   const results = useMemo(() => {

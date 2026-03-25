@@ -17,6 +17,7 @@ import {
   ExternalLink, RefreshCw, Music2, Cpu, Package,
   ChevronRight, X, Loader2, Puzzle, Plus, Upload,
 } from 'lucide-react';
+import { withLock } from '../../subsystems/async-lock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -204,6 +205,7 @@ export function VoicebankManager({ onClose, onSelectBank }: Props) {
 
   const startDownload = useCallback(async (entry: CatalogEntry) => {
     if (!entry.download.url) return;
+    return withLock(`vb-download-${entry.id}`, async () => {
     setDownloads(prev => ({ ...prev, [entry.id]: { percent:0, phase:'downloading' } }));
     if (isElectron) {
       const result = await (window as any).voicebanks.download({
@@ -222,6 +224,7 @@ export function VoicebankManager({ onClose, onSelectBank }: Props) {
       }
       setDownloads(prev => ({ ...prev, [entry.id]: { percent:100, phase:'done' } }));
     }
+    });
   }, [isElectron]);
 
   const isInstalled = (id: string) =>

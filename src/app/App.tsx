@@ -20,6 +20,9 @@ import {
 import { useProjectStore, ScrollSyncBus, ContextTarget } from '../store/project';
 import { WelcomeScreen, addToRecent } from './components/WelcomeScreen';
 import { ExtensionsPanel } from './components/ExtensionsPanel';
+import { MelonTerminal }  from './components/MelonTerminal';
+import { AddonPanelHost } from '../platform/AddonPanelHost';
+import { withLock } from '../subsystems/async-lock';
 import { startUpdateChecker } from '../subsystems/update-checker';
 import { SavePrompt } from './components/SavePrompt';
 import { MLCWindow }     from './components/MLCWindow';
@@ -48,6 +51,8 @@ export default function App() {
 
   const [showWelcome,    setShowWelcome]    = React.useState(true);
   const [extsOpen,       setExtsOpen]       = React.useState(false);
+  const [mtiVisible,     setMtiVisible]     = React.useState(false);
+  const [mtiHeight,      setMtiHeight]      = React.useState(240);
   const [savePrompt,     setSavePrompt]     = React.useState<{ onSave:()=>void; onDiscard:()=>void } | null>(null);
 
   // Call this instead of window.confirm() anywhere you need save-first logic
@@ -57,11 +62,12 @@ export default function App() {
     setSavePrompt({
       onSave: async () => {
         setSavePrompt(null);
-        const { saveProject, serializeProject } = await import('../subsystems/project-io');
-        const proj = serializeProject(s.projectName, s.bpm, s.tracks, s.notes, s.pitchPoints, s.addonData ?? {});
-        const path = await saveProject(proj, s.currentFilePath ?? null);
-        if (path) { s.setCurrentFilePath(path); s.setDirty(false); onProceed(); }
-        // if path is null user cancelled the file dialog → don't proceed
+        await withLock('file-dialog', async () => {
+          const { saveProject, serializeProject } = await import('../subsystems/project-io');
+          const proj = serializeProject(s.projectName, s.bpm, s.tracks, s.notes, s.pitchPoints, s.addonData ?? {});
+          const path = await saveProject(proj, s.currentFilePath ?? null);
+          if (path) { s.setCurrentFilePath(path); s.setDirty(false); onProceed(); }
+        });
       },
       onDiscard: () => { setSavePrompt(null); onProceed(); },
     });
@@ -86,20 +92,23 @@ export default function App() {
     const onWelcome  = () => requireSave(() => setShowWelcome(true));
     const onExtensions      = () => setExtsOpen(true);
     const onExtensionsDebug = () => { setExtsOpen(true); };
+    const onMti             = () => setMtiVisible(v => !v);
 
     // "Install from file…" — open native dialog, install, notify, open panel
-    const onInstallAddon = async () => {
-      const result = await (window as any).app?.installAddonDialog?.();
-      if (!result) return;
-      if (result.canceled) return;
-      if (result.ok) {
-        notify({ type: 'success', title: `Installed ${result.name ?? 'addon'}`,
-                 body: result.version ? `v${result.version}` : undefined });
-        setExtsOpen(true); // open panel so user sees what was installed
-      } else if (result.error) {
-        notify({ type: 'error', title: 'Install failed', body: result.error });
-        setExtsOpen(true);
-      }
+    const onInstallAddon = () => {
+      withLock('file-dialog', async () => {
+        const result = await (window as any).app?.installAddonDialog?.();
+        if (!result) return;
+        if (result.canceled) return;
+        if (result.ok) {
+          notify({ type: 'success', title: `Installed ${result.name ?? 'addon'}`,
+                   body: result.version ? `v${result.version}` : undefined });
+          setExtsOpen(true);
+        } else if (result.error) {
+          notify({ type: 'error', title: 'Install failed', body: result.error });
+          setExtsOpen(true);
+        }
+      });
     };
     document.addEventListener('open-mlc',      onMlc);
     document.addEventListener('open-settings', onSettings);
@@ -108,6 +117,7 @@ export default function App() {
     document.addEventListener('open-extensions',       onExtensions);
     document.addEventListener('open-extensions-debug',   onExtensionsDebug);
     document.addEventListener('open-extensions-install', onInstallAddon);
+    document.addEventListener('open-mti',               onMti);
     return () => {
       document.removeEventListener('open-mlc',      onMlc);
       document.removeEventListener('open-settings', onSettings);
@@ -116,6 +126,7 @@ export default function App() {
       document.removeEventListener('open-extensions',       onExtensions);
       document.removeEventListener('open-extensions-debug',   onExtensionsDebug);
       document.removeEventListener('open-extensions-install', onInstallAddon);
+      document.removeEventListener('open-mti',               onMti);
     };
   }, []);
 
@@ -184,20 +195,27 @@ export default function App() {
   }, []);
 
   const handleImportMidi = useCallback(async () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.mid,.midi';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      try {
-        const midiFile = await loadMidiFromFile(file);
-        setMidiImportFile(midiFile);
-      } catch (err: any) {
-        notify({ type: 'error', title: 'Failed to parse MIDI', body: err.message || 'Invalid MIDI file' });
-      }
-    };
-    input.click();
+    return withLock('file-dialog', async () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.mid,.midi';
+      return new Promise<void>((resolve) => {
+        input.onchange = async (e) => {
+          const file = (e.target as HTMLInputElement).files?.[0];
+          if (!file) { resolve(); return; }
+          try {
+            const midiFile = await loadMidiFromFile(file);
+            setMidiImportFile(midiFile);
+          } catch (err: any) {
+            notify({ type: 'error', title: 'Failed to parse MIDI', body: err.message || 'Invalid MIDI file' });
+          }
+          resolve();
+        };
+        // If user cancels the file picker, resolve after a delay
+        window.addEventListener('focus', () => setTimeout(resolve, 300), { once: true });
+        input.click();
+      });
+    });
   }, [notify]);
 
   const handleMidiImportComplete = useCallback((importedNotes: ImportedNote[], tempo: number) => {
@@ -212,6 +230,7 @@ export default function App() {
   }, [setBpm, notify]);
 
   const handleRender = useCallback(async () => {
+    return withLock('render', async () => {
     const state = useProjectStore.getState();
     const selectedTrack = state.tracks.find(t => t.selected);
     if (!state.notes.length) {
@@ -307,6 +326,7 @@ export default function App() {
     } catch (err: any) {
       notify({ type: 'error', title: 'Render failed', body: err.message || 'Unknown error' });
     }
+    }); // withLock('render')
   }, [notify, setVbManagerOpen]);
 
   // ── Effects ────────────────────────────────────────────────────────────
@@ -416,10 +436,12 @@ export default function App() {
     const handler = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey;
       if (meta && e.key === 'k')                             { e.preventDefault(); setPaletteOpen(true); return; }
+      if (e.key === '`' && (e.ctrlKey || e.metaKey))         { e.preventDefault(); setMtiVisible(v => !v); return; }
       if (meta && e.key === 's' && !e.shiftKey) {
         e.preventDefault();
-        const s = useProjectStore.getState();
-        import('../subsystems/project-io').then(async ({ saveProject, serializeProject }) => {
+        withLock('file-dialog', async () => {
+          const s = useProjectStore.getState();
+          const { saveProject, serializeProject } = await import('../subsystems/project-io');
           const p = serializeProject(s.projectName, s.bpm, s.tracks, s.notes, s.pitchPoints);
           const path = await saveProject(p, s.currentFilePath ?? null);
           if (path) { s.setCurrentFilePath(path); s.setDirty(false); notify({ type:'success', title:'Saved', body:path }); }
@@ -428,8 +450,9 @@ export default function App() {
       }
       if (meta && e.key === 's' && e.shiftKey) {
         e.preventDefault();
-        const s = useProjectStore.getState();
-        import('../subsystems/project-io').then(async ({ saveProject, serializeProject }) => {
+        withLock('file-dialog', async () => {
+          const s = useProjectStore.getState();
+          const { saveProject, serializeProject } = await import('../subsystems/project-io');
           const p = serializeProject(s.projectName, s.bpm, s.tracks, s.notes, s.pitchPoints);
           const path = await saveProject(p, null);
           if (path) { s.setCurrentFilePath(path); s.setDirty(false); notify({ type:'success', title:'Saved as', body:path }); }
@@ -688,9 +711,23 @@ export default function App() {
           <PianoRoll       isDark={isDark} scrollBus={scrollBus.current} onContextMenu={openContextMenu} />
           <PitchCurveEditor isDark={isDark} scrollBus={scrollBus.current} onContextMenu={openContextMenu} />
           <LyricsLane      isDark={isDark} scrollBus={scrollBus.current} onContextMenu={openContextMenu} />
+          {/* Extension panels: editor_bottom zone */}
+          <AddonPanelHost zone="editor_bottom" />
         </div>
+        {/* Extension panels: right_sidebar zone */}
+        <AddonPanelHost zone="right_sidebar" style={{
+          borderLeft: '0.5px solid var(--border-subtle)',
+          overflowY: 'auto', minWidth: 0,
+        }} />
         {notePropsOpen && <NotePropertiesPanel onClose={() => setNotePropsOpen(false)} />}
       </div>
+
+      <MelonTerminal
+        visible={mtiVisible}
+        onToggle={() => setMtiVisible(v => !v)}
+        height={mtiHeight}
+        onResize={setMtiHeight}
+      />
 
       <TransportBar
         isPlaying={isPlaying} bpm={bpm} playheadBeats={playheadPosition}
