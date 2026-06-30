@@ -1,0 +1,40 @@
+{
+  "version": "1.0",
+  "projectName": "Twinkle Twinkle (きらきら星)",
+  "bpm": 100,
+  "timeSig": [4, 4],
+  "tracks": [
+    {
+      "id": "t1",
+      "name": "Lead Vocal",
+      "voiceBank": "Kasane Teto",
+      "engine": "OpenUTAU",
+      "color": "#E8607A",
+      "muted": false,
+      "selected": true,
+      "breathiness": 38,
+      "tension": 60,
+      "gender": 25,
+      "pitchRange": 55
+    }
+  ],
+  "notes": [
+    {"id":"n1",  "pitch":60,"start":0,   "duration":1,  "lyric":"ki"},
+    {"id":"n2",  "pitch":60,"start":1,   "duration":1,  "lyric":"ra"},
+    {"id":"n3",  "pitch":67,"start":2,   "duration":1,  "lyric":"ki"},
+    {"id":"n4",  "pitch":67,"start":3,   "duration":1,  "lyric":"ra"},
+    {"id":"n5",  "pitch":69,"start":4,   "duration":1,  "lyric":"ki"},
+    {"id":"n6",  "pitch":69,"start":5,   "duration":1,  "lyric":"ra"},
+    {"id":"n7",  "pitch":67,"start":6,   "duration":2,  "lyric":"bo"},
+    {"id":"n8",  "pitch":65,"start":8,   "duration":1,  "lyric":"shi"},
+    {"id":"n9",  "pitch":65,"start":9,   "duration":1,  "lyric":"ka"},
+    {"id":"n10", "pitch":64,"start":10,  "duration":1,  "lyric":"ra"},
+    {"id":"n11", "pitch":64,"start":11,  "duration":1,  "lyric":"ki"},
+    {"id":"n12", "pitch":62,"start":12,  "duration":1,  "lyric":"ra"},
+    {"id":"n13", "pitch":62,"start":13,  "duration":1,  "lyric":"me"},
+    {"id":"n14", "pitch":60,"start":14,  "duration":2,  "lyric":"ku"}
+  ],
+  "pitchPoints": [],
+  "createdAt": "2025-03-21T00:00:00.000Z",
+  "modifiedAt": "2025-03-21T00:00:00.000Z"
+}

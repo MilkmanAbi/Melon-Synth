@@ -1,0 +1,35 @@
+{
+  "id":          "hum_to_midi",
+  "name":        "Hum to MIDI",
+  "version":     "1.0.0",
+  "type":        "app_addon",
+  "min_melon":   "1.0.0-alpha",
+  "description": "Hum or sing into your mic. Melon detects the pitch and converts your melody into MIDI notes ready to edit.",
+  "author":      "MilkmanAbi",
+  "license":     "MIT",
+  "homepage":    "https://github.com/MilkmanAbi/Melon-Synth",
+  "contributes": {
+    "panels": [
+      {
+        "id":              "hum_panel",
+        "display_name":    "Hum to MIDI",
+        "icon":            "Mic",
+        "requested_zone":  "voice_panel_bottom",
+        "fallback_zone":   "right_sidebar",
+        "component":       "HumToMidiPanel",
+        "default_visible": true,
+        "collapsible":     true,
+        "default_height":  220
+      }
+    ],
+    "commands": [
+      { "id": "hum_to_midi.record", "label": "Start/Stop Hum Recording", "icon": "Mic", "category": "Edit" }
+    ]
+  },
+  "entry_point": "index.js",
+  "backend": {
+    "entry":     "backend.py",
+    "pip_deps":  ["aubio", "numpy"]
+  },
+  "permissions": ["microphone", "project.read", "project.write", "notifications"]
+}

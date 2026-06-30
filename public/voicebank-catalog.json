@@ -1,0 +1,162 @@
+{
+  "_comment": "Melon Synth community voicebank catalog. Keep this file updated via PR.",
+  "_catalog_version": "1.0.0",
+  "_last_updated": "2025-03-21",
+  "voicebanks": [
+    {
+      "id": "kasane_teto_cv",
+      "name": "Kasane Teto CV",
+      "author": "Teto_family (utaforum)",
+      "version": "1.0",
+      "description": "The iconic UTAU mascot. Warm, slightly rough chimera voice. Best for pop, rock, anime-style songs. Standard CV format — easy to use, great for beginners.",
+      "language": "ja",
+      "phoneme_set": "jp_cv",
+      "mlc_module": "jp_cv_standard",
+      "type": "cv",
+      "engine": "openutau",
+      "sample_rate": 44100,
+      "size_mb": 48,
+      "tags": ["japanese", "cv", "pop", "beginner-friendly", "iconic"],
+      "color": "#E8607A",
+      "avatar_emoji": "🍓",
+      "license": "CC BY-NC 3.0",
+      "download": {
+        "method": "direct",
+        "url": "https://kasaneteto.jp/download/Teto_VB.zip",
+        "mirrors": [
+          "https://github.com/utau-community/kasane-teto/releases/latest/download/KasaneTeto_CV.zip"
+        ],
+        "checksum_sha256": null,
+        "extract_folder": "KasaneTeto_CV"
+      },
+      "install_note": "Standard UTAU CV voicebank. Works immediately after download."
+    },
+    {
+      "id": "utane_uta_defoko",
+      "name": "Utane Uta (Defoko)",
+      "author": "Ameya/Ayame",
+      "version": "2.0",
+      "description": "The default UTAU voice. Clear, neutral tone. Good for learning the workflow — predictable behavior, solid phoneme coverage.",
+      "language": "ja",
+      "phoneme_set": "jp_cv",
+      "mlc_module": "jp_cv_standard",
+      "type": "cv",
+      "engine": "openutau",
+      "sample_rate": 44100,
+      "size_mb": 32,
+      "tags": ["japanese", "cv", "neutral", "default", "beginner-friendly"],
+      "color": "#7B8FE8",
+      "avatar_emoji": "🎙️",
+      "license": "Free for non-commercial use",
+      "download": {
+        "method": "direct",
+        "url": "https://utau2008.xrea.jp/utau_dl.html",
+        "mirrors": [],
+        "checksum_sha256": null,
+        "extract_folder": "Defoko"
+      },
+      "install_note": "Bundled with UTAU. If UTAU is installed, Defoko is already on your system."
+    },
+    {
+      "id": "namine_ritsu_kire",
+      "name": "Namine Ritsu KIRE",
+      "author": "NARU-T",
+      "version": "2.0",
+      "description": "Popular free voicebank with a clear, bright feminine voice. KIRE version has a clean, sharp quality. Good for ballads and J-pop.",
+      "language": "ja",
+      "phoneme_set": "jp_cv",
+      "mlc_module": "jp_cv_standard",
+      "type": "cv",
+      "engine": "openutau",
+      "sample_rate": 44100,
+      "size_mb": 55,
+      "tags": ["japanese", "cv", "bright", "feminine", "ballad", "popular"],
+      "color": "#F5A623",
+      "avatar_emoji": "🌸",
+      "license": "CC BY-NC-SA 4.0",
+      "download": {
+        "method": "direct",
+        "url": "https://narue.plala.jp/ritsu_dl.html",
+        "mirrors": [],
+        "checksum_sha256": null,
+        "extract_folder": "NamineRitsu_KIRE"
+      },
+      "install_note": "Standard CV voicebank. Compatible with OpenUTAU."
+    },
+    {
+      "id": "kasane_teto_cvvc_en",
+      "name": "Kasane Teto CVVC English",
+      "author": "RubyRedEnder, teto_family",
+      "version": "1.5",
+      "description": "English CVVC version of Teto. Uses ARPAbet-based phonemes for English synthesis. Required for singing English lyrics naturally with Teto's voice.",
+      "language": "en",
+      "phoneme_set": "arpabet_cvvc",
+      "mlc_module": "en_arpabet",
+      "type": "cvvc",
+      "engine": "openutau",
+      "sample_rate": 44100,
+      "size_mb": 180,
+      "tags": ["english", "cvvc", "arpabet", "teto", "intermediate"],
+      "color": "#E8607A",
+      "avatar_emoji": "🍓",
+      "license": "CC BY-NC 3.0",
+      "download": {
+        "method": "direct",
+        "url": "https://github.com/RubyRedEnder/Kasane-Teto-English/releases/latest/download/KasaneTeto_ENG.zip",
+        "mirrors": [],
+        "checksum_sha256": null,
+        "extract_folder": "KasaneTeto_ENG"
+      },
+      "install_note": "English CVVC bank. Select the 'English ARPAbet' module in MLC for correct phoneme mapping."
+    },
+    {
+      "id": "miku_v4x_append_soft",
+      "name": "Hatsune Miku Append Soft (OpenUTAU port)",
+      "author": "Crypton Future Media / OpenUTAU port by community",
+      "version": "V4X",
+      "description": "Community OpenUTAU port of Miku Append Soft. Breathy, soft texture. Check license before commercial use.",
+      "language": "ja",
+      "phoneme_set": "jp_cvvc",
+      "mlc_module": "jp_cvvc_miku",
+      "type": "cvvc",
+      "engine": "openutau",
+      "sample_rate": 44100,
+      "size_mb": 250,
+      "tags": ["japanese", "cvvc", "miku", "soft", "breathy", "advanced"],
+      "color": "#4DBF90",
+      "avatar_emoji": "💎",
+      "license": "Crypton Character Vocal License (check terms)",
+      "download": {
+        "method": "community_catalog",
+        "url": null,
+        "note": "Available in OpenUTAU's built-in voicebank installer. Open OpenUTAU → Tools → Install Singer."
+      },
+      "install_note": "Install via OpenUTAU's built-in installer for the cleanest setup."
+    }
+  ],
+  "engines": [
+    {
+      "id": "openutau",
+      "name": "OpenUTAU",
+      "description": "Open source singing synthesizer. Supports UTAU voicebanks, DiffSinger neural voicebanks, and more. The recommended engine for Melon Synth.",
+      "website": "https://www.openutau.com",
+      "license": "MIT",
+      "install": {
+        "windows": {
+          "method": "installer",
+          "url": "https://github.com/stakira/OpenUtau/releases/latest/download/OpenUtau-win-x64.zip"
+        },
+        "mac": {
+          "method": "dmg",
+          "url": "https://github.com/stakira/OpenUtau/releases/latest/download/OpenUtau-osx.dmg"
+        },
+        "linux": {
+          "method": "appimage",
+          "url": "https://github.com/stakira/OpenUtau/releases/latest/download/OpenUtau-linux-x64.tar.gz"
+        }
+      },
+      "cli_render_flag": "--render",
+      "voicebank_dir_env": "OPENUTAU_SINGERS_PATH"
+    }
+  ]
+}

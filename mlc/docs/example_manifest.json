@@ -1,0 +1,31 @@
+{
+  "id": "jp_cv_genbu",
+  "name": "Japanese CV — Namine Ritsu / Genbu Style",
+  "version": "1.0.0",
+  "description": "Tuned phoneme mappings for Namine Ritsu (Genbu), Ritsu Kaine, and similar UTAU banks with a slightly rougher, more masculine timbre. Optimised singability defaults for anime/rock style songs.",
+  "author": "community",
+  "license": "MIT",
+
+  "language": "en",
+  "languages": ["en", "ja"],
+  "phoneme_set": "jp_cv",
+  "target_banks": ["Namine Ritsu", "Ritsu Kaine", "Genbu", "Yokune Ruko"],
+
+  "entry_point": "module.py",
+  "mlc_api_version": "1.0.0",
+  "python_requires": ">=3.9",
+  "dependencies": [],
+
+  "data_files": [
+    "data/exceptions.json",
+    "data/phoneme_map.json"
+  ],
+
+  "singability_default": 0.7,
+  "singability_notes": "0.7 suits rock/anime style. Drop to 0.5 for ballads.",
+
+  "confidence_notes": "High confidence for common EN words. Lower for uncommon vocabulary.",
+  "known_issues": [
+    "Some 'v' phonemes may sound thin — set V to B in singable mode if needed"
+  ]
+}
