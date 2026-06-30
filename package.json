@@ -6,6 +6,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
+    "preview": "vite preview",
     "dev:electron": "bash scripts/dev.sh",
     "pack": "npm run build:all && electron-builder",
     "dist": "npm run build && electron-builder --publish=never",

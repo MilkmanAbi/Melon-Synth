@@ -391,7 +391,7 @@ export function SettingsPanel({ onClose, initialTab }: Props) {
                   padding:'var(--space-6) var(--space-4) var(--space-4)',
                   gap:'var(--space-3)',
                 }}>
-                  <img src="/melon-logo.png" alt="Melon Synth"
+                  <img src={import.meta.env.BASE_URL + "melon-logo.png"} alt="Melon Synth"
                     style={{ width:88, height:88, borderRadius:20, objectFit:'contain',
                              boxShadow:'0 4px 20px rgba(61,158,120,0.25)' }}
                   />

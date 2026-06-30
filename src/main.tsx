@@ -63,8 +63,19 @@ window.onunhandledrejection = (e) => {
   console.error('[MelonSynth] Unhandled promise rejection:', e.reason);
 };
 
-createRoot(document.getElementById("root")!).render(
-  <RootErrorBoundary>
-    <App />
-  </RootErrorBoundary>
-);
+import { bootMelonPlatform } from "./platform/substrate-host";
+
+// Boot the in-browser backend (Substrate) before React mounts so that
+// window.app / window.voicebanks / window.render / window.mlc exist by the time
+// any component checks for them. This is what turns the web build into the full
+// app instead of the degraded fallback. If boot fails, we still render — the
+// app degrades gracefully rather than showing a blank screen.
+bootMelonPlatform()
+  .catch(err => console.error("[MelonSynth] platform boot failed:", err))
+  .finally(() => {
+    createRoot(document.getElementById("root")!).render(
+      <RootErrorBoundary>
+        <App />
+      </RootErrorBoundary>
+    );
+  });

@@ -4,6 +4,10 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
+  // Relative base so the build works both on a GitHub Pages project path
+  // (https://<user>.github.io/Melon-Synth/) and later on a custom domain root,
+  // with no rebuild needed. All runtime asset lookups use import.meta.env.BASE_URL.
+  base: './',
   plugins: [
     // The React and Tailwind plugins are both required for Make, even if
     // Tailwind is not being actively used – do not remove them

@@ -160,14 +160,14 @@ export function WelcomeScreen({ onDismiss }: Props) {
       {/* Background wallpaper — displayed at full fidelity, no overlays */}
       <div style={{
         position: 'absolute', inset: 0,
-        backgroundImage: 'url(/welcome-bg.png)',
+        backgroundImage: `url(${import.meta.env.BASE_URL}welcome-bg.png)`,
         backgroundSize: 'cover', backgroundPosition: 'center',
         opacity: 1.0, pointerEvents: 'none',
       }}/>
 
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {/* Logo + title */}
-        <img src="/melon-logo.png" alt="Melon Synth" style={{
+        <img src={import.meta.env.BASE_URL + "melon-logo.png"} alt="Melon Synth" style={{
           width: 120, height: 120, objectFit: 'contain',
           marginBottom: 14, borderRadius: 28,
           boxShadow: '0 8px 32px rgba(77,191,144,0.30)',

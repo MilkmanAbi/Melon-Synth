@@ -5,11 +5,17 @@
   <p>
     <a href="#license"><img alt="GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-green"/></a>
     <a href="https://discord.gg/J9xwk3p9"><img alt="Discord" src="https://img.shields.io/badge/discord-join-7289da"/></a>
-    <img alt="platform" src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey"/>
+    <img alt="platform" src="https://img.shields.io/badge/platform-Browser%20%7C%20Linux%20%7C%20macOS%20%7C%20Windows-lightgrey"/>
   </p>
 </div>
 
 ---
+
+**Runs in the browser now.** Melon Synth has been ported off Electron to run
+fully in-browser on top of Substrate, so it can be hosted on GitHub Pages with
+no server and no install. Files, projects, and voicebanks all live in an
+in-browser filesystem, and synthesis happens in the page. See [WEB.md](WEB.md)
+for how it works and how to deploy.
 
 Melon Synth is a free, open-source singing voice editor built for people who
 want to make music without having to read a manual. Draw notes, type lyrics,

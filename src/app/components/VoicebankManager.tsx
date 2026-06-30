@@ -168,7 +168,7 @@ export function VoicebankManager({ onClose, onSelectBank }: Props) {
     }
 
     // Load catalog from bundled JSON
-    fetch('/voicebank-catalog.json')
+    fetch(import.meta.env.BASE_URL + 'voicebank-catalog.json')
       .then(r => r.json())
       .then((d: any) => setCatalog(d.voicebanks ?? []))
       .catch(() => setCatalog(DEMO_CATALOG));
@@ -209,9 +209,10 @@ export function VoicebankManager({ onClose, onSelectBank }: Props) {
     setDownloads(prev => ({ ...prev, [entry.id]: { percent:0, phase:'downloading' } }));
     if (isElectron) {
       const result = await (window as any).voicebanks.download({
-        id:   entry.id,
-        url:  entry.download.url,
-        name: entry.name,
+        id:      entry.id,
+        url:     entry.download.url,
+        mirrors: entry.download.mirrors,
+        name:    entry.name,
       });
       if (!result.ok) {
         setDownloads(prev => ({ ...prev, [entry.id]: { percent:0, phase:'error', error:result.error } }));
