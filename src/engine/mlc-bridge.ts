@@ -260,7 +260,6 @@ export function registerMLCHandlers(bridge: MLCBridge): void {
   ipcMain.handle('mlc:check-updates',        (_, ids?: string[])        => bridge.checkAddonUpdates(ids));
   ipcMain.handle('mlc:apply-update',         (_, id: string, url: string) => bridge.applyAddonUpdate(id, url));
   ipcMain.handle('mlc:get-addon-info',       (_, id: string)            => bridge.getAddonInfo(id));
-  ipcMain.handle('mlc:get-pipeline-trace',  (_, p: any)                => bridge.getPipelineTrace(p));
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────

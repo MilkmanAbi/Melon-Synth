@@ -7,7 +7,6 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { SkipBack, Play, Pause, Square, SkipForward, Volume2, VolumeX } from 'lucide-react';
-import { withLock } from '../../subsystems/async-lock';
 
 interface Props {
   isPlaying:     boolean;
@@ -226,14 +225,14 @@ export function TransportBar({
 
       {/* Export WAV */}
       <button
-        onClick={() => withLock('file-dialog', async () => {
+        onClick={async () => {
           const path = (window as any).app
             ? await (window as any).app.exportWAV('export.wav')
             : null;
           if (!path && !(window as any).app) {
             console.warn('Export requires Electron');
           }
-        })}
+        }}
         style={{
           height:28, padding:'0 var(--space-3)',
           border:'0.5px solid var(--border-default)',
@@ -249,7 +248,7 @@ export function TransportBar({
 
       {/* Open in Music Editor */}
       <button
-        onClick={() => withLock('file-dialog', async () => {
+        onClick={async () => {
           if ((window as any).render) {
             const editors = await (window as any).render.detectEditors();
             const found   = editors.find((e: any) => e.detected);
@@ -259,7 +258,7 @@ export function TransportBar({
               console.warn('No music editor detected');
             }
           }
-        })}
+        }}
         style={{
           display:'flex', alignItems:'center', gap:4,
           fontSize:'var(--text-sm)', color:'var(--accent)', flexShrink:0,

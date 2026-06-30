@@ -18,8 +18,8 @@ interface Props {
 export function WindowControls({ platform }: Props) {
   const [isMaximized, setIsMaximized] = useState(false);
   
-  // macOS uses native traffic lights; the web build has no window chrome to control
-  if (platform === 'darwin' || platform === 'web') {
+  // macOS uses native traffic lights, no custom controls needed
+  if (platform === 'darwin') {
     return null;
   }
   

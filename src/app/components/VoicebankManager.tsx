@@ -17,7 +17,6 @@ import {
   ExternalLink, RefreshCw, Music2, Cpu, Package,
   ChevronRight, X, Loader2, Puzzle, Plus, Upload,
 } from 'lucide-react';
-import { withLock } from '../../subsystems/async-lock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -168,7 +167,7 @@ export function VoicebankManager({ onClose, onSelectBank }: Props) {
     }
 
     // Load catalog from bundled JSON
-    fetch(import.meta.env.BASE_URL + 'voicebank-catalog.json')
+    fetch('/voicebank-catalog.json')
       .then(r => r.json())
       .then((d: any) => setCatalog(d.voicebanks ?? []))
       .catch(() => setCatalog(DEMO_CATALOG));
@@ -205,14 +204,12 @@ export function VoicebankManager({ onClose, onSelectBank }: Props) {
 
   const startDownload = useCallback(async (entry: CatalogEntry) => {
     if (!entry.download.url) return;
-    return withLock(`vb-download-${entry.id}`, async () => {
     setDownloads(prev => ({ ...prev, [entry.id]: { percent:0, phase:'downloading' } }));
     if (isElectron) {
       const result = await (window as any).voicebanks.download({
-        id:      entry.id,
-        url:     entry.download.url,
-        mirrors: entry.download.mirrors,
-        name:    entry.name,
+        id:   entry.id,
+        url:  entry.download.url,
+        name: entry.name,
       });
       if (!result.ok) {
         setDownloads(prev => ({ ...prev, [entry.id]: { percent:0, phase:'error', error:result.error } }));
@@ -225,7 +222,6 @@ export function VoicebankManager({ onClose, onSelectBank }: Props) {
       }
       setDownloads(prev => ({ ...prev, [entry.id]: { percent:100, phase:'done' } }));
     }
-    });
   }, [isElectron]);
 
   const isInstalled = (id: string) =>

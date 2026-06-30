@@ -142,26 +142,13 @@ export async function openProject(): Promise<{ project: LoidProject; path: strin
     const input  = document.createElement('input');
     input.type   = 'file';
     input.accept = '.loid,.json';
-    let resolved = false;
-    const done = (val: any) => { if (!resolved) { resolved = true; resolve(val); } };
-
     input.onchange = async () => {
       const file = input.files?.[0];
-      if (!file) return done(null);
+      if (!file) return resolve(null);
       const text = await file.text();
       const project = parseRaw(text);
-      done(project ? { project, path: file.name } : null);
+      resolve(project ? { project, path: file.name } : null);
     };
-
-    // Detect cancel: when the window regains focus after the file dialog closes
-    // without a selection, onchange never fires. This catches that.
-    const onFocus = () => {
-      setTimeout(() => {
-        if (!resolved && (!input.files || input.files.length === 0)) done(null);
-      }, 300);
-    };
-    window.addEventListener('focus', onFocus, { once: true });
-
     input.click();
   });
 }

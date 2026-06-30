@@ -9,7 +9,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bell, ChevronDown } from 'lucide-react';
 import { useProjectStore }   from '../../store/project';
 import { saveProject, openProject, newProject, serializeProject } from '../../subsystems/project-io';
-import { withLock } from '../../subsystems/async-lock';
 
 interface Props {
   requireSave?:            (onProceed: () => void) => void;
@@ -165,15 +164,15 @@ export function CommandBar({
       },
       {
         label: 'Open…', shortcut: '⌘O',
-        action: () => withLock('file-dialog', async () => {
+        action: async () => {
           const p = await openProject();
           if (!p) return;
           store.loadProject(p);
           store.notify({ type:'success', title:`Opened: ${p.name}` });
-        }),
+        },
       },
       { label: 'Save', shortcut: '⌘S',
-        action: () => withLock('file-dialog', async () => {
+        action: async () => {
           const p = serializeProject(
             store.projectName, store.bpm, store.tracks, store.notes, store.pitchPoints
           );
@@ -183,10 +182,10 @@ export function CommandBar({
             store.setDirty(false);
             store.notify({ type:'success', title:'Project saved', body: path });
           }
-        }),
+        },
       },
       { label: 'Save as…', shortcut: '⌘⇧S',
-        action: () => withLock('file-dialog', async () => {
+        action: async () => {
           const p = serializeProject(
             store.projectName, store.bpm, store.tracks, store.notes, store.pitchPoints
           );
@@ -196,79 +195,20 @@ export function CommandBar({
             store.setDirty(false);
             store.notify({ type:'success', title:'Saved as', body: path });
           }
-        }),
+        },
       },
       { sep: true },
       { label: 'Import MIDI…', shortcut: '⌘I',
         action: () => onImportMidi?.(),
       },
       { label: 'Export WAV…',
-        action: () => withLock('render', async () => {
-          if (!(window as any).app) {
-            store.notify({ type:'info', title:'Export requires Electron', body:'Run npm run dev:electron' });
-            return;
-          }
-          const outPath = await withLock('file-dialog', async () => {
-            return await (window as any).app.exportWAV(store.projectName + '.wav');
-          });
-          if (!outPath) return;
-
-          // Check we have notes and a voicebank
-          const state = useProjectStore.getState();
-          if (!state.notes.length) {
-            store.notify({ type:'warning', title:'Nothing to export', body:'Draw some notes first!' });
-            return;
-          }
-          const selectedTrack = state.tracks.find(t => t.selected);
-          if (!selectedTrack?.voicePath) {
-            store.notify({ type:'warning', title:'No voicebank selected',
-              body:'Open the Voicebank Manager and pick a voice.' });
-            return;
-          }
-
-          store.notify({ type:'info', title:'Exporting…', body:outPath, progress: 10 });
-
-          try {
-            // Run MLC conversion first
-            const moduleId = selectedTrack.voiceBank?.toLowerCase().includes('miku') ? 'jp_cvvc_miku' : 'jp_cv_standard';
-            const sorted = [...state.notes].sort((a,b) => a.start - b.start);
-
-            // Render via the full pipeline
-            const result = await (window as any).render.render({
-              notes: sorted.map(n => ({
-                id: n.id, pitch: n.pitch, start: n.start, duration: n.duration,
-                lyric: n.lyric, phoneme: n.phoneme || n.lyric,
-                expressions: n.expressions, vibrato: n.vibrato,
-                pitchBend: n.pitchBend, flags: n.flags,
-              })),
-              voice_dir:      selectedTrack.voicePath,
-              voicebank_path: selectedTrack.voicePath,
-              tempo:          state.bpm,
-              out_wav:        outPath,
-              project_name:   state.projectName,
-              track_params: {
-                gender:      selectedTrack.gender      ?? 30,
-                breathiness: selectedTrack.breathiness ?? 40,
-                tension:     selectedTrack.tension     ?? 65,
-                pitchRange:  selectedTrack.pitchRange  ?? 50,
-              },
-              pitch_points: state.pitchPoints,
-            });
-
-            if (result?.ok) {
-              store.notify({ type:'success', title:'Exported!', body: outPath,
-                action: { label: 'Open folder', onClick: () => {
-                  const dir = outPath.replace(/[/\\][^/\\]+$/, '');
-                  (window as any).app?.openPath?.(dir);
-                }}
-              });
-            } else {
-              store.notify({ type:'error', title:'Export failed', body: result?.error || 'Unknown error' });
-            }
-          } catch (e: any) {
-            store.notify({ type:'error', title:'Export failed', body: e.message });
-          }
-        }),
+        action: async () => {
+          const path = (window as any).app
+            ? await (window as any).app.exportWAV(store.projectName + '.wav')
+            : null;
+          if (path) store.notify({ type:'info', title:'Rendering to WAV…', body: path });
+          else if (!(window as any).app) store.notify({ type:'info', title:'Export requires Electron', body:'Run npm run dev:electron' });
+        },
       },
       { sep: true },
       { label: 'Manage voicebanks…',
@@ -347,10 +287,6 @@ export function CommandBar({
       { label: `Snap: 1/32 ${store.snap==='1/32'?'✓':''}`, action: () => store.setSnap('1/32') },
       { sep: true },
       { label: 'Settings…', shortcut: '⌘,', action: () => onOpenSettings?.() },
-      { sep: true },
-      { label: 'Terminal (MTI)',     shortcut: '⌃`',
-        action: () => document.dispatchEvent(new CustomEvent('open-mti')),
-      },
     ],
 
     Extensions: [

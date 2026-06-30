@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { mlcClient, ConversionResult } from '../../subsystems/mlc-client';
 import { useProjectStore } from '../../store/project';
-import { withLock } from '../../subsystems/async-lock';
 
 interface Props { onClose: () => void; }
 
@@ -67,26 +66,22 @@ export function MLCWindow({ onClose }: Props) {
 
   const doConvert = useCallback(async () => {
     if (!text.trim()) return;
-    return withLock('mlc-convert', async () => {
-      setLoading(true); setError(null);
-      try {
-        const r = await mlcClient.convert({ text, moduleId, singability });
-        setResult(r);
-      } catch (e: any) {
-        setError(e.message ?? 'Conversion failed');
-      } finally {
-        setLoading(false);
-      }
-    });
+    setLoading(true); setError(null);
+    try {
+      const r = await mlcClient.convert({ text, moduleId, singability });
+      setResult(r);
+    } catch (e: any) {
+      setError(e.message ?? 'Conversion failed');
+    } finally {
+      setLoading(false);
+    }
   }, [text, moduleId, singability]);
 
   const handleSuggest = async () => {
-    return withLock('mlc-suggest', async () => {
-      const s = await mlcClient.suggestSingability(text, moduleId);
-      setSingability(s.suggested);
-      setSuggestLabel(s.reason);
-      setTimeout(() => setSuggestLabel(''), 4000);
-    });
+    const s = await mlcClient.suggestSingability(text, moduleId);
+    setSingability(s.suggested);
+    setSuggestLabel(s.reason);
+    setTimeout(() => setSuggestLabel(''), 4000);
   };
 
   const handleApply = () => {

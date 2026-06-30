@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { useProjectStore } from '../../store/project';
 import { AddonInstallDialog } from './AddonInstallDialog';
-import { withLock } from '../../subsystems/async-lock';
 import type { MelonPermission } from '../../platform/melon-addon-types';
 
 interface Props { onClose: () => void; }
@@ -422,7 +421,6 @@ export function ExtensionsPanel({ onClose }: Props) {
   useEffect(() => { load(); }, [load]);
 
   const checkUpdates = async () => {
-    return withLock('addon-update', async () => {
     setChecking(true);
     try {
       const mlcUp = await (window as any).mlc?.checkUpdates?.();
@@ -437,11 +435,9 @@ export function ExtensionsPanel({ onClose }: Props) {
     } finally {
       setChecking(false);
     }
-    });
   };
 
   const removeAddon = async (id: string, type: 'mlc' | 'melon') => {
-    return withLock(`remove-${id}`, async () => {
     setRemoving(r => ({ ...r, [id]: true }));
     try {
       if (type === 'mlc') {
@@ -464,11 +460,9 @@ export function ExtensionsPanel({ onClose }: Props) {
     } finally {
       setRemoving(r => ({ ...r, [id]: false }));
     }
-    });
   };
 
   const applyUpdate = async (id: string, url: string) => {
-    return withLock(`update-${id}`, async () => {
     setUpdating(u => ({ ...u, [id]: true }));
     try {
       const r = await (window as any).mlc?.applyUpdate?.({ addon_id: id, download_url: url });
@@ -482,7 +476,6 @@ export function ExtensionsPanel({ onClose }: Props) {
     } finally {
       setUpdating(u => ({ ...u, [id]: false }));
     }
-    });
   };
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -754,14 +747,7 @@ export function ExtensionsPanel({ onClose }: Props) {
                         onUpdate={applyUpdate}
                         onToggle={async (id, enabled) => {
                           setMelonExts(prev => prev.map(x => x.id === id ? { ...x, enabled } : x));
-                          // Persist toggle state to main process
-                          try {
-                            if (enabled) {
-                              await (window as any).app?.openExtensionUI?.(id);
-                            }
-                            // Store toggle state in the extension metadata
-                            notify({ type: 'info', title: `${enabled ? 'Enabled' : 'Disabled'} extension` });
-                          } catch {}
+                          // TODO: persist toggle state
                         }}
                         removing={!!removing[a.id]}
                         updating={!!updating[a.id]}
@@ -810,58 +796,19 @@ export function ExtensionsPanel({ onClose }: Props) {
                   <button
                     disabled={installing}
                     onClick={async () => {
-                      // Try Electron native dialog first — more reliable file path handling
-                      if ((window as any).app?.installAddonDialog) {
-                        try {
-                          const r = await (window as any).app.installAddonDialog();
-                          if (!r || r.canceled) return;
-                          if (r.ok) {
-                            const label = r.name ? `${r.name} v${r.version ?? '?'}` : 'addon';
-                            setDropStatus({ type: 'success', msg: `✓ Installed ${label}` });
-                            notify({ type: 'success', title: `Installed ${label}` });
-                            setTimeout(() => { setDropStatus(null); load(); }, 1500);
-                          } else {
-                            const err = r.error ?? 'Install failed';
-                            setDropStatus({ type: 'error', msg: err });
-                            notify({ type: 'error', title: 'Install failed', body: err });
-                            setTimeout(() => setDropStatus(null), 6000);
-                          }
-                          return;
-                        } catch (e: any) {
-                          // Dialog failed — fall through to HTML file input
-                          console.warn('Electron dialog failed, using HTML fallback:', e);
-                        }
+                      const r = await (window as any).app?.installAddonDialog?.();
+                      if (!r) return;
+                      if (r.ok) {
+                        const label = r.name ? `${r.name} v${r.version ?? '?'}` : 'addon';
+                        setDropStatus({ type: 'success', msg: `✓ Installed ${label}` });
+                        notify({ type: 'success', title: `Installed ${label}` });
+                        setTimeout(() => { setDropStatus(null); load(); }, 1500);
+                      } else if (!r.canceled) {
+                        const err = r.error ?? 'Install failed';
+                        setDropStatus({ type: 'error', msg: err });
+                        notify({ type: 'error', title: 'Install failed', body: err });
+                        setTimeout(() => setDropStatus(null), 6000);
                       }
-                      // Fallback: HTML file input — works in browser and as Electron backup
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = '.mlc,.melon';
-                      input.onchange = async () => {
-                        const file = input.files?.[0];
-                        if (!file) return;
-                        const filePath = (file as any).path;  // Electron gives native path
-                        if (filePath && (window as any).app?.installAddon) {
-                          setInstalling(true);
-                          setDropStatus({ type: 'info', msg: `Installing ${file.name}…` });
-                          try {
-                            const r = await (window as any).app.installAddon(filePath);
-                            if (r?.ok) {
-                              const label = r.name ? `${r.name} v${r.version ?? '?'}` : file.name;
-                              setDropStatus({ type: 'success', msg: `✓ Installed ${label}` });
-                              notify({ type: 'success', title: `Installed ${label}` });
-                              setTimeout(() => { setDropStatus(null); load(); }, 1500);
-                            } else {
-                              setDropStatus({ type: 'error', msg: r?.error ?? 'Install failed' });
-                              notify({ type: 'error', title: 'Install failed', body: r?.error });
-                              setTimeout(() => setDropStatus(null), 6000);
-                            }
-                          } finally { setInstalling(false); }
-                        } else {
-                          notify({ type: 'warning', title: 'Cannot install in browser mode',
-                                   body: 'Drag & drop the file onto this panel, or run via Electron.' });
-                        }
-                      };
-                      input.click();
                     }}
                     style={{
                       height: 32, padding: '0 20px', borderRadius: 'var(--radius-md)',

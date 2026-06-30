@@ -98,10 +98,7 @@ class AudioSubsystem {
   }
 
   async loadWAVFromPath(p: string): Promise<void> {
-    // Web build returns blob:/http(s):/data: URLs from the in-browser renderer;
-    // only bare OS paths (desktop) need the file:// prefix.
-    const isUrl = /^(blob:|https?:|data:|file:)/.test(p);
-    await this.loadWAV(isUrl ? p : `file://${p}`);
+    await this.loadWAV(p.startsWith('file://') ? p : `file://${p}`);
   }
 
   playWAV(offsetBeats = 0, bpm = 120): void {

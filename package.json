@@ -6,7 +6,6 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "preview": "vite preview",
     "dev:electron": "bash scripts/dev.sh",
     "pack": "npm run build:all && electron-builder",
     "dist": "npm run build && electron-builder --publish=never",
@@ -46,7 +45,6 @@
     "@radix-ui/react-toggle": "1.1.2",
     "@radix-ui/react-toggle-group": "1.1.2",
     "@radix-ui/react-tooltip": "1.1.8",
-    "adm-zip": "^0.5.16",
     "canvas-confetti": "1.9.4",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
@@ -91,7 +89,7 @@
       "vite": "6.3.5"
     }
   },
-  "description": "Open singing voice editor — simple for beginners, powerful for pros",
+  "description": "Open singing voice editor \u2014 simple for beginners, powerful for pros",
   "author": "Melon Synth Contributors",
   "license": "GPL-3.0",
   "main": "electron/electron-src/main.js",

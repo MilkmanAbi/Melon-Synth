@@ -9,7 +9,6 @@ import React, { useState, useEffect } from 'react';
 import { Plus, FolderOpen, Music2, Clock, ChevronRight, Sparkles } from 'lucide-react';
 import { newProject, openProject } from '../../subsystems/project-io';
 import { useProjectStore } from '../../store/project';
-import { withLock } from '../../subsystems/async-lock';
 
 interface RecentFile { path: string; name: string; modified: string; }
 
@@ -46,49 +45,41 @@ export function WelcomeScreen({ onDismiss }: Props) {
   const store = useProjectStore();
 
   useEffect(() => {
-    const clean = getRecent();
+    // One-time cleanup: remove corrupt recent entries left by old bug
+    const clean = getRecent(); // getRecent now sanitizes
     localStorage.setItem('melon_recent_projects', JSON.stringify(clean));
     setRecent(clean);
   }, []);
 
   const handleNew = () => {
-    if (loading) return;
     store.loadProject(newProject('untitled'));
     onDismiss();
   };
 
   const handleOpen = async () => {
-    if (loading) return;
     setLoading('open');
-    try {
-      await withLock('file-dialog', async () => {
-        const result = await openProject();
-        if (!result) return;
-        const { project, path } = result as any;
-        store.loadProject(project ?? result);
-        if (path) store.setCurrentFilePath(path);
-        if (path) addToRecent(path, (project ?? result)?.name ?? 'untitled');
-        onDismiss();
-        setTimeout(() => {
-          const wrap = document.querySelector('[data-piano-scroll]') as HTMLElement;
-          if (wrap) {
-            const notes = store.notes;
-            if (notes.length > 0) {
-              const firstBeat = Math.min(...notes.map(n => n.start));
-              wrap.scrollLeft = Math.max(0, firstBeat * 84 - 100);
-            }
-          }
-        }, 100);
-      });
-    } catch (e: any) {
-      store.notify({ type: 'error', title: 'Failed to open project', body: e?.message || 'Unknown error' });
-    } finally {
-      setLoading(null);  // ALWAYS clear — even if withLock skipped, even if dialog cancelled
-    }
+    const result = await openProject();
+    setLoading(null);
+    if (!result) return;
+    const { project, path } = result as any;
+    store.loadProject(project ?? result);  // compat: v2 returns {project,path}, v1 returned project
+    if (path) store.setCurrentFilePath(path);
+    if (path) addToRecent(path, (project ?? result)?.name ?? 'untitled');
+    onDismiss();
+    // Scroll piano roll to the first note
+    setTimeout(() => {
+      const wrap = document.querySelector('[data-piano-scroll]') as HTMLElement;
+      if (wrap) {
+        const notes = store.notes;
+        if (notes.length > 0) {
+          const firstBeat = Math.min(...notes.map(n => n.start));
+          wrap.scrollLeft = Math.max(0, firstBeat * 84 - 100);
+        }
+      }
+    }, 100);
   };
 
   const handleRecent = async (file: RecentFile) => {
-    if (loading) return;
     setLoading(file.path);
     try {
       const { loadFromPath } = await import('../../subsystems/project-io');
@@ -99,6 +90,7 @@ export function WelcomeScreen({ onDismiss }: Props) {
       onDismiss();
     } catch {
       store.notify({ type: 'error', title: 'Could not open file', body: file.path });
+      // Remove from recents if missing
       const updated = getRecent().filter(r => r.path !== file.path);
       localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
       setRecent(updated);
@@ -107,8 +99,8 @@ export function WelcomeScreen({ onDismiss }: Props) {
     }
   };
 
+  // Load example - try Electron readFile first, then fetch
   const handleExample = async (file: string) => {
-    if (loading) return;
     setLoading(file);
     try {
       let project: any = null;
@@ -129,6 +121,7 @@ export function WelcomeScreen({ onDismiss }: Props) {
           if (r.ok) project = await r.json();
         } catch {}
       }
+      if (!project) throw new Error('Could not load example file');
       if (!project) throw new Error('Could not load example file');
       store.loadProject(project);
       onDismiss();
@@ -157,17 +150,22 @@ export function WelcomeScreen({ onDismiss }: Props) {
       animation: 'fadeIn 200ms ease-out both',
       overflow: 'hidden',
     }}>
-      {/* Background wallpaper — displayed at full fidelity, no overlays */}
+      {/* Background wallpaper */}
       <div style={{
         position: 'absolute', inset: 0,
-        backgroundImage: `url(${import.meta.env.BASE_URL}welcome-bg.png)`,
+        backgroundImage: 'url(/welcome-bg.png)',
         backgroundSize: 'cover', backgroundPosition: 'center',
         opacity: 1.0, pointerEvents: 'none',
+      }}/>
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.25) 100%)',
+        pointerEvents: 'none',
       }}/>
 
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {/* Logo + title */}
-        <img src={import.meta.env.BASE_URL + "melon-logo.png"} alt="Melon Synth" style={{
+        <img src="/melon-logo.png" alt="Melon Synth" style={{
           width: 120, height: 120, objectFit: 'contain',
           marginBottom: 14, borderRadius: 28,
           boxShadow: '0 8px 32px rgba(77,191,144,0.30)',
@@ -184,10 +182,10 @@ export function WelcomeScreen({ onDismiss }: Props) {
         {/* Card */}
         <div style={{
           width: 600,
-          background: 'rgba(255,255,255,0.95)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-          border: '0.5px solid rgba(255,255,255,0.5)',
+          background: 'rgba(255,255,255,0.93)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '0.5px solid rgba(255,255,255,0.7)',
           borderRadius: 16,
           overflow: 'hidden',
           boxShadow: '0 16px 48px rgba(0,0,0,0.10)',
@@ -201,15 +199,13 @@ export function WelcomeScreen({ onDismiss }: Props) {
             ].map(btn => {
               const Icon = btn.icon;
               return (
-                <button key={btn.id} onClick={btn.onClick} disabled={!!loading}
+                <button key={btn.id} onClick={btn.onClick} disabled={loading === 'open' && btn.id === 'open'}
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     gap: 10, padding: '24px 20px',
                     background: 'transparent',
                     borderRight: btn.id === 'new' ? '0.5px solid var(--border-subtle)' : 'none',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    opacity: loading ? 0.5 : 1,
-                    transition: 'background var(--duration-fast), opacity var(--duration-fast)',
+                    cursor: 'pointer', transition: 'background var(--duration-fast)',
                   }}
                   onMouseEnter={e => (e.currentTarget.style.background = btn.accent ? 'rgba(77,191,144,0.07)' : 'rgba(0,0,0,0.03)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}

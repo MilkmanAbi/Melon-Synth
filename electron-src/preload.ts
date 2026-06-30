@@ -70,10 +70,6 @@ contextBridge.exposeInMainWorld('app', {
   }),
   fileExists: (path: any) => ipcRenderer.invoke('fs:exists', path),
 
-  // ZIP project save/load (.loid v2 format)
-  saveProjectZip: (path: any, files: any) => ipcRenderer.invoke('fs:save-project-zip', path, files),
-  readProjectZip: (path: any) => ipcRenderer.invoke('fs:read-project-zip', path),
-
   // Theme
   getSystemDark:       ()        => ipcRenderer.invoke('app:get-system-dark'),
   onSystemDarkChanged: (cb: any) => ipcRenderer.on('app:system-dark-changed', (_e, d) => cb(d)),
@@ -112,46 +108,6 @@ contextBridge.exposeInMainWorld('render', {
   openInEditor:  (p: any) => ipcRenderer.invoke('editor:open', p),
   onComplete:    (cb: any) => ipcRenderer.on('render:complete', (_e, r) => cb(r)),
   onError:       (cb: any) => ipcRenderer.on('render:error', (_e, e) => cb(e)),
-});
-
-// ── window.mti — Melon Terminal Interface ─────────────────────────────────
-
-contextBridge.exposeInMainWorld('mti', {
-  // Persistent shell sessions
-  spawnSession:    (id: any)            => ipcRenderer.invoke('mti:spawn-session', id),
-  write:           (id: any, data: any) => ipcRenderer.invoke('mti:write', id, data),
-  kill:            (id: any)            => ipcRenderer.invoke('mti:kill', id),
-
-  // One-shot commands
-  exec:            (cmd: any, cwd?: any) => ipcRenderer.invoke('mti:exec', cmd, cwd),
-  python:          (script: any)        => ipcRenderer.invoke('mti:python', script),
-  mlcCommands:     ()                   => ipcRenderer.invoke('mti:mlc-commands'),
-
-  // Events from shell sessions
-  onStdout:  (cb: any) => ipcRenderer.on('mti:stdout', (_e, id, data) => cb(id, data)),
-  onStderr:  (cb: any) => ipcRenderer.on('mti:stderr', (_e, id, data) => cb(id, data)),
-  onExit:    (cb: any) => ipcRenderer.on('mti:exit',   (_e, id, code) => cb(id, code)),
-});
-
-// ── window.melonAddons — Extension Panel System ───────────────────────────
-
-contextBridge.exposeInMainWorld('melonAddons', {
-  // Get registered panels (for AddonPanelHost)
-  getPanels:             ()           => ipcRenderer.invoke('addons:get-panels'),
-  // Get registered toolbar items
-  getToolbarItems:       ()           => ipcRenderer.invoke('addons:get-toolbar-items'),
-  // Get registered menu items
-  getMenuItems:          ()           => ipcRenderer.invoke('addons:get-menu-items'),
-  // Get registered commands
-  getCommands:           ()           => ipcRenderer.invoke('addons:get-commands'),
-  // Execute an addon-registered command
-  executeCommand:        (id: any)    => ipcRenderer.invoke('addons:execute-command', id),
-  // Call an addon's backend
-  callBackend:           (extId: any, method: any, args: any) =>
-    ipcRenderer.invoke('app:extension-call-backend', extId, method, args),
-  // Events: addon loaded/unloaded
-  onAddonLoaded:   (cb: any) => ipcRenderer.on('addons:loaded',   (_e, info) => cb(info)),
-  onAddonUnloaded: (cb: any) => ipcRenderer.on('addons:unloaded', (_e, id) => cb(id)),
 });
 
 export {};
